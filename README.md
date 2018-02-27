@@ -11,7 +11,7 @@ The entire library consists of a single source file, [entropy_converter.hpp](ent
 
 There is also a test suite and demo, [tests.cpp](tests.cpp), that can be compiled using `g++ tests.cpp --std=c++14` with GCC, or `cl tests.cpp` with Microsoft C++.
 
-Compatibility: C++ 14. Tested with Visual Studio 2017 and g++ 5.4.
+Compatibility: C++14. Tested with Visual Studio 2017 and g++ 5.4.
 
 ## Example
 
@@ -73,6 +73,8 @@ Returns a uniform random number in the specified range. Either between `0` and `
 
 `gen` must be callable with `operator()`, and may be called zero or more times. When the input range is a power of 2, it must not exceed the capacity of `buffer_type`. When the input range is not a power of 2, then the product of the input and output ranges must not exceed the capacity of `result_type`. These conditions are checked in debug mode, but not in release mode.
 
+`limit` controls the size of buffered entropy but there is normally no need to specify this.
+
 ### Convenience methods
 
 ```c++
@@ -106,14 +108,14 @@ The simple solution, `rand()%n`, is wrong because the resulting distribution wil
 A correct solution is something like
 
 ```
-    do
-        x = fetch_some_entropy();
-    while(x>=n);
+do:
+    x = fetch_some_entropy()
+while x>=n
 ```
 
-Whilst this is correct, it is not very efficient in terms of its entropy conversion. It loses entropy for three reasons. Firstly, the algorithm may loop several times, and entropy is lost on each iteration. Secondly, the condition (x>=n) itself destroys entropy, and thirdly, the residual entropy in x is thrown away each iteration.
+Whilst this is correct, it is not very efficient in terms of its entropy conversion. It loses entropy for three reasons. Firstly, the algorithm may loop several times, and entropy is lost on each iteration. Secondly, the condition `x>=n` itself destroys entropy, and thirdly, the residual entropy in `x` is thrown away each iteration.
 
-econv uses a modified algorithm that addresses these problems:
+*econv* uses a modified algorithm that addresses these problems:
 
 ```
 init():
@@ -121,15 +123,15 @@ init():
     range=1
 
 int fetch(int base):
-    while range<c/base
+    while range<c/base:
         value = value * base + read_entropy_from device(base)
         range  = range * base
 
-int econv(int n, int base=2):
-	do
+int convert(int n, int base=2):
+	do:
 		fetch(base)
-		kn= range - range%n
-		if value < kn
+		kn = range - range%n
+		if value < kn:
 			result = value % n
 			value = value/n
 			range = kn/n
@@ -139,32 +141,31 @@ int econv(int n, int base=2):
 			range -= kn
 	loop
 ```
-The algorithm stores entropy in the variable "value", which is a uniform random number between 0 and range-1. Initially, "value" contains no entropy, but as soon as convert is called, the algorithm reads as much entropy as possible from the outside source into the value. In general, value will contain entropy from the previous iteration, but the invariant is that value is a uniform random variable between 0 and range-1.
+The algorithm stores entropy in the variable `value`, which is a uniform random number between `0` and `range-1`. Initially, `value` contains no entropy, but as soon as `convert` is called, the algorithm reads as much entropy as possible from the outside source into the `value`, up to a maximum of `c`. In general, `value` will contain entropy from the previous iteration, but the invariant is that value is a uniform random variable between `0` and `range-1`.
 
-Next, the algorithm find the highest multiple of n, kn, smaller than "range", by simply subtracting the modulus. If value < kn, then we know that value  is a uniform random variable less than kn, so we can factorize the uniform random variable into two parts: "k" and "n". We return a random variable of size "n", and the remaining entropy is stored in "value" for the next time "convert" is called.
+Next, the algorithm find the highest multiple of `n`, `kn`, smaller than `range`, by subtracting the modulus. If `value<kn`, then we know that `value` is a uniform random variable less than `kn`, so we can factorize the uniform random variable into two parts: `k` and `n`. We return a random variable of size `n`, and the remaining entropy is stored in `value` for the next time `convert` is called.
 
-If value <kn is false, then value lies between kn and range-1. Thus we subtract kn from both "value" and "range", preserving our invariant that "value" is in 0-range-1.
+If `value<kn` is false, then value lies between `kn` and `range-1`. Thus we subtract `kn` from both `value` and `range`, preserving our invariant that `value` is between `0` and `range-1`.
 
 ## Analysis
-The only place this algorithm loses entropy is in the comparison "value<kn", which yields a smaller random variable in both cases. The amount of entropy lost by this comparison is given by the binary entropy function (link)
+The only place this algorithm loses entropy is in the comparison `value<kn`, which yields a smaller random variable in both cases. The amount of entropy lost by this comparison is given by the [binary entropy function] (https://en.wikipedia.org/wiki/Binary_entropy_function)
 
-    entropy loss per comparison = -plgp - (1-p)lg(1-p)
+Entropy loss per comparison = `-plgp - (1-p)lg(1-p)`
 
-Here, p is the probability of "value<kn"
+Here, `p` is the probability of `value<kn`
 
     p = P(value<kn) = kn/value = (range - range%n) / range > 1-n/range > 1-2n/c
 
-The number of times we go round the loop on average is given by 1/p
+The expected number of times we go round the loop is `1/p`.
 
-Thus the entropy loss of this algorithm =
+Thus the expected entropy loss of this algorithm =
 
-        (-plgp - (1-p)lg(1-p))/p = -lgp - (1-p)lg(1-p)/p  < lg(1-mn/c)...
+        (-plgp-(1-p)lg(1-p))/p 
 
-We now see the purpose of fetching as much entropy as possible up front. It means that the entropy loss is tiny. For example for example n=6 and c=2^64then n/C ~= 6.5e-19. This makes the entropy loss around 3.9e-17 bits per conversion.
+We now see the purpose of fetching as much entropy as possible up front. It means that the entropy loss is tiny. For example if n=6 and c=2^64,  then n/C ~= 6.5e-19. This makes the entropy loss around 3.9e-17 bits per conversion.
 
-The fetch() function can be changed to fetch entropy of a different base, and an example of this is shown in the demo. In that case, p > 1+nm/c, which is in general very small (and therefore efficient), unless n or m are very large for some reason.
+The `fetch()` function can be changed to fetch entropy of a different base `m`. In that case, `p > 1+nm/c`, which is in general very small (and therefore efficient), unless `n` or `m` are very large.
 
-It follows that the entropy loss is governed by the n/c, and the larger c, the more efficient the entropy conversion. For example, entropy_converter<uint64_t> is more efficient than entropy_converter<uint32_t>, at the expense of slightly more buffering.
+It follows that the entropy loss is governed by the ration `n/c`, and the larger c, the more efficient the entropy conversion. For example, `entropy_converter<uint64_t>` is more efficient than `entropy_converter<uint32_t>`, at the expense of slightly more buffering.
 
-If the input to econv is perfect, then its output will be perfectly distributed independent random numbers. econv can simply be used as a normal uniform random number generator to supply uniform random numbers to a shuffling algorithm like Fisher-Yates. Since the random numbers are perfect, then the result of the shuffle will be perfect as well.
-
+If the input to *econv* is perfect, then its output will be perfectly distributed independent random numbers. *econv* can be used as a normal uniform random number generator to supply uniform random numbers to a shuffling algorithm like Fisher-Yates. Since the random numbers are perfect, then the result of the shuffle will be perfect as well.
