@@ -1,31 +1,33 @@
-## Efficient entropy conversion
+# Efficient entropy conversion
 
-econv is a small C++ library to generate perfect random numbers, and perfect shuffles, directly from hardware entropy.
+*econv* is a simple C++ library to generate perfect random numbers, and perfect shuffles, directly from hardware entropy.
 
 This algorithm converts entropy very efficiently, which means that very little of the entropy produced by the hardware device is lost in the conversion process. This is interesting from an algorithmic perspective, and practical in case that hardware entropy is a limited resource.
 
-For example, shuffling a deck of 52 cards using std::shuffle would read 1632 bits of entropy, losing 1406 bits of hardware entropy each time a deck was shuffled. econv loses around 8.6e-15 bits. Similarly, std::uniform_int_distribution reads at least 32 bits of entropy to produce a single dice throw, losing over 29 bits per output, whereas econv would lose just 3.9e-17 bits on average.
+For example, shuffling a deck of 52 cards using `std::shuffle` would read 1632 bits of entropy, losing 1406 bits of hardware entropy each time a deck was shuffled. *econv* loses around 8.6e-15 bits. Similarly, `std::uniform_int_distribution` reads at least 32 bits of entropy to produce a single die throw, losing over 29 bits per output, whereas *econv* would lose just 3.9e-17 bits on average.
 
-## Installation
-The entire library consists of a single source file, `entropy_converter.hpp`. 
-There is also a small demo, `tests.cpp`, that can be compiled using `g++ demo.cpp` or `cl demo.cpp` or equivalent.
+## Setup
+The entire library consists of a single source file, [entropy_converter.hpp](entropy_converter.hpp).
 
-Compatibility:
+There is also a test suite and demo, [tests.cpp](tests.cpp), that can be compiled using `g++ tests.cpp --std=c++14` with GCC, or `cl tests.cpp` with Microsoft C++.
 
-## Basic usage
+Compatibility: C++ 14. Tested with Visual Studio 2017 and g++ 5.4.
+
+## Example
 
 ```c++
 #include <entropy_converter.hpp>
 #include <random>
+#include <algorithm>
 
-entropy_converter<unsigned> c;
+entropy_converter<> c;
 std::random_device d;
 
-// Produce a uniform number between 1 and 6.
-int d6 = c.convert_uniform(1,6,d);
+// Generate a uniform number between 1 and 6.
+int d6 = c.convert(1,6,d);
 
 // Shuffle a deck of cards
-std::vector<int> cards{52}
+std::vector<int> cards{52};
 std::random_shuffle(cards.begin(), cards.end(), c.with_generator(d));
 ```
 
@@ -36,15 +38,62 @@ template<typename T=unsigned, typename U=unsigned>
 class entropy_converter<T, U>;
 ```
 
-### `entropy_converter` typedefs
-`typedef T result_type;`
-`typedef U buffer_type;`
+### Types
+```c++
+typedef T result_type;
+```
+The datatype used to store non-binary entropy. The larger this data type, the more efficient the entropy conversion becomes, but the entropy converted would pre-fetch more entropy, up to the size of `result_type`.
 
-### `entropy_converter` Constructors
+```c++
+typedef U buffer_type;
+```
+The datatype used to store binary entropy.  It must be at least as large as the binary input device, and defaults to `unsigned` which is the size of data produced by `std::random_device`.
 
-Default constructor entropy_converter()
+### Constructors
 
-convert(result_type range, Device &d)
+`entropy_converter()`
+Initializes the entropy converter.
+
+### `convert` method
+
+```
+template<typename Generator>
+result_type convert(result_type target, Generator & gen)
+
+template<typename Result, typename Generator>
+Result convert(Result outMin, Result outMax, Generator & gen)
+
+template<typename Result, typename Input, typename Generator>
+Result convert(Result outMin, Result outMax, Input inMin, Input inMax, Generator & gen,
+               result_type limit = std::numeric_limits<result_type>::max())
+```
+Returns a uniform random number in the specified range. Either between `0` and `target-1` or between `outMin` and `outMax` inclusive.
+
+`gen` is a random number engine, producing a uniform random number between `inMin` and `inMax`. If `inMin` and `inMax` are not specified, then `gen.min()` and `gen.max()` are used.
+
+`gen` must be callable with `operator()`, and may be called zero or more times. When the input range is a power of 2, it must not exceed the capacity of `buffer_type`. When the input range is not a power of 2, then the product of the input and output ranges must not exceed the capacity of `result_type`. These conditions are checked in debug mode, but not in release mode.
+
+### Convenience methods
+
+```c++
+template<typename Generator>
+auto with_generator(Generator &gen)
+```
+Returns a functor taking an integer argument `x`, that returns a uniform random numer between 0 and `x-1`.
+
+Example: `std::random_shuffle(cards.begin(), cards.end(), c.with_generator(d));`
+
+```c++
+template<typename Result>
+auto make_uniform(Result a, Result b)
+```
+Returns a functor taking a generator, and returns a uniform random number between `a` and `b`.
+
+```c++
+template<typename Result, typename Generator>
+auto make_uniform(Result a, Result b, Generator &gen)
+```
+Returns a functor taking no arguments, and returns a uniform random number between `a` and `b`.
 
 ## Theoretical background
 Producing uniform random numbers from a hardware source presents two challenges:
@@ -52,7 +101,7 @@ Producing uniform random numbers from a hardware source presents two challenges:
 1) Ensuring that the resulting number is perfectly uniform
 2) Avoiding losing too much entropy in the conversion process.
 
-The simple but wrong solution, `rand()%n`, is wrong because the resulting distribution will always be biased, except when n is itself a power of 2. In fact any algorithm using a finite quantity of binary entropy results in a biased distribution, and the only correct solution is to allow for an unbounded amount of input entropy.
+The simple solution, `rand()%n`, is wrong because the resulting distribution will always be biased, except when n is itself a power of 2. In fact any algorithm using a finite quantity of binary entropy results in a biased distribution, and the only correct solution is to allow for an unbounded amount of input entropy.
 
 A correct solution is something like
 
@@ -107,7 +156,7 @@ Here, p is the probability of "value<kn"
 
 The number of times we go round the loop on average is given by 1/p
 
-    Thus the entropy loss of this algorithm =
+Thus the entropy loss of this algorithm =
 
         (-plgp - (1-p)lg(1-p))/p = -lgp - (1-p)lg(1-p)/p  < lg(1-mn/c)...
 
