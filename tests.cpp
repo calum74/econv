@@ -3,9 +3,10 @@
 #include "entropy_converter.hpp"
 #include <random>
 #include <iostream>
-#include <iomanip>	
+#include <iomanip>
 #include <cmath>
 #include <cassert>
+#include <algorithm>
 
 typedef long double LD;
 

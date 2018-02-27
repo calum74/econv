@@ -160,14 +160,14 @@ public:
 	template<typename Result>
 	auto make_uniform(Result a, Result b)
 	{
-		return [&](auto &gen) { return convert(a, b, gen); };
+		return [&](auto &gen) { return this->convert(a, b, gen); };
 	}
 
 	// Return a functor generating a uniform random distribution in the range [a,b]
 	template<typename Result, typename Generator>
 	auto make_uniform(Result a, Result b, Generator &gen)
 	{
-		return [&]() { return convert(a, b, gen); };
+		return [&]() { return this->convert(a, b, gen); };
 	}
 
 	// Returns the size of the buffered entropy.
