@@ -290,6 +290,8 @@ void tests()
 	assert(c16a.get_buffered_range() > 1);
 	assert(c16b.get_buffered_range() == 1);
 
+	// Test the quality of the output
+
 	for (int i = 1; i < 100; ++i)
 	{
 		test_distribution_is_uniform<std::uint16_t>(i);

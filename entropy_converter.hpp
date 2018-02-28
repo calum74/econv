@@ -10,14 +10,14 @@
 //
 // Example:
 //
-// entropy_converter<> g;
+// entropy_converter<> c;
 // std::random_device d;
-// std::cout << "You rolled a " << g.convert(1,6,d) << std::endl;
+// std::cout << "You rolled a " << c.convert(1,6,d) << std::endl;
 
 #pragma once
 
 #include <limits>
-#include <cassert>
+#include <stdexcept>
 
 // The entopy converter.
 // It converts entropy, and buffers a limited amount of entropy.
@@ -89,7 +89,7 @@ public:
 	template<typename Generator>
 	result_type convert(result_type target, Generator & gen)
 	{
-		assert(target > 0 && "Invalid output range");
+		if (target <= 0) throw std::invalid_argument("Output range is invalid");
 		return convert<result_type>(0, target - 1, gen);
 	}
 
@@ -113,24 +113,26 @@ public:
 	Result convert(Result outMin, Result outMax, Input inMin, Input inMax, Generator & gen, result_type limit = std::numeric_limits<result_type>::max())
 	{
 		if (outMin == outMax) return outMax;
-		assert(outMin <= outMax && "Invalid output range");
-		assert(inMin < inMax && "Invalid input range");
+		if (outMin > outMax) throw std::invalid_argument("Invalid output range");
+		if (inMin >= inMax) throw std::invalid_argument("Invalid input range");
 
 		auto target = 1 + outMax - outMin;
 		auto inRange = inMax - inMin;
 		if ((inRange & (inRange + 1)) == 0)
 		{
-			assert(inRange <= (Input)std::numeric_limits<buffer_type>::max() && "buffer_size too small for input");
-
 			// The generator produces powers of 2. In this case, we
 			// buffer the output of gen in 'buffer'.
+
+			if (inRange > (Input)std::numeric_limits<buffer_type>::max())
+				throw std::invalid_argument("buffer_size too small");
+
 			return outMin + convert_from_source(target, 2, limit, [=,&gen]()
 			{
 				if (buffer_max == 0)
 				{
 					auto g = gen();
-					assert(g >= inMin);
-					assert(g <= inMax);
+					if (g < inMin) throw std::invalid_argument("Input value too small");
+					if (g > inMax) throw std::invalid_argument("Input value too large");
 					buffer = g - inMin;
 					buffer_max = inRange;
 				}
@@ -160,14 +162,14 @@ public:
 	template<typename Result>
 	auto make_uniform(Result a, Result b)
 	{
-		return [&](auto &gen) { return this->convert(a, b, gen); };
+		return [=](auto &gen) { return this->convert(a, b, gen); };
 	}
 
 	// Return a functor generating a uniform random distribution in the range [a,b]
 	template<typename Result, typename Generator>
 	auto make_uniform(Result a, Result b, Generator &gen)
 	{
-		return [&]() { return this->convert(a, b, gen); };
+		return [=,&gen]() { return this->convert(a, b, gen); };
 	}
 
 	// Returns the size of the buffered entropy.
@@ -184,7 +186,7 @@ private:
 	template<typename Source>
 	result_type convert_from_source(result_type target, result_type src_range, result_type limit, Source source)
 	{
-		assert(target <= limit / src_range && "Arguments out of range");
+		if (target > limit / src_range) throw std::invalid_argument("The output range is too large");
 
 		for (;;)
 		{
@@ -193,11 +195,12 @@ private:
 			while (range < limit / src_range)
 			{
 				auto s = source();
-				assert(s >= 0 && "Source out of range");
-				assert(s < src_range && "Source out of range");
+				if (s < 0) throw std::invalid_argument("Input is too small");
+				if (s >= src_range) throw std::invalid_argument("Input is too large");
 				value = value * src_range + s;
 				range *= src_range;
 			}
+
 			// "restrict" is the highest multiple of target <= range
 			result_type restrict = range - range % target;
 
