@@ -1,44 +1,75 @@
 # Efficient entropy conversion
 
-*econv* is a simple C++ library to generate perfect random numbers, and perfect shuffles, directly from hardware entropy.
+_econv_ is a simple C++ library to generate perfect random numbers, and perfect shuffles, directly from hardware entropy.
 
 This algorithm converts entropy very efficiently, which means that very little of the entropy produced by the hardware device is lost in the conversion process. This is interesting from an algorithmic perspective, and practical in case that hardware entropy is a limited resource.
 
 For example, shuffling a deck of 52 cards using `std::shuffle` would read 1632 bits of entropy, losing 1406 bits of hardware entropy each time a deck was shuffled. *econv* loses around 8.6e-15 bits. Similarly, `std::uniform_int_distribution` reads at least 32 bits of entropy to produce a single die throw, losing over 29 bits per output, whereas *econv* would lose just 3.9e-17 bits on average.
 
 ## Setup
-The entire library consists of a single source file, [entropy_converter.hpp](entropy_converter.hpp).
+The entire library can be distributed as a single source file, [entropy_converter.hpp](entropy_converter.hpp).
 
 There is also a test suite and demo, [tests.cpp](tests.cpp), that can be compiled using `g++ tests.cpp --std=c++14` with GCC, or `cl tests.cpp` with Microsoft C++.
 
 Compatibility: C++14. Tested with Visual Studio 2017 and g++ 5.4.
 
-## Example
+## Basic usage
+
+The library consists of a single header file, `entropy_converter.hpp`, containing a single class, `entropy_converter<T=unsigned,U=unsigned>`. The `entropy_converter` class reads entropy from an input source such as `std::random_device`, and outputs entropy in a specified range.
+
+In the following example, the `convert` function is used to read entropy from an entropy source `d` and stores the result in the variable `d6`.
 
 ```c++
 #include <entropy_converter.hpp>
 #include <random>
-#include <algorithm>
 
 entropy_converter<> c;
 std::random_device d;
 
 // Generate a uniform number between 1 and 6.
 int d6 = c.convert(1,6,d);
+```
 
-// Shuffle a deck of cards
+The entropy converter `c` buffers entropy, since `std::random_device` produces entropy in chunks of 32 bits.
+
+To roll 1000 dies, do
+
+```c++
+for(int i=0; i<1000; ++i)
+	std::cout << c.convert(1,6,d);
+```
+
+and not
+
+```c++
+for(int i=0; i<1000; ++i)
+{
+	entropy_converter<> c;	// Do not do this
+	std::cout << c.convert(1,6,d);
+}
+```
+
+The reason for this is because destroying the entropy converter will lose its internal entropy buffer. The second approach is correct but it will be much less efficient. It is possible to move entropy out of an entropy converter using `std::move()`.
+
+To shuffle an array, use the function `std::random_shuffle`, which implements a perfect shuffle using the Fischer-Yates algorithm. The `with_generator()` method returns a functor that can be used by `std::random_shuffle()`. For example,
+
+```c++
+#include <algorithm>
 std::vector<int> cards{52};
+
 std::random_shuffle(cards.begin(), cards.end(), c.with_generator(d));
 ```
 
 ## Reference
 
+### Synopsis
+
 ```c++
 template<typename T=unsigned, typename U=unsigned>
-class entropy_converter<T, U>;
+class entropy_converter<T, U>
 ```
 
-### Types
+### Member types
 ```c++
 typedef T result_type;
 ```
@@ -51,7 +82,9 @@ The datatype used to store binary entropy.  It must be at least as large as the 
 
 ### Constructors
 
-`entropy_converter()`
+```
+entropy_converter()
+```
 Initializes the entropy converter.
 
 ### `convert` method
@@ -67,7 +100,7 @@ template<typename Result, typename Input, typename Generator>
 Result convert(Result outMin, Result outMax, Input inMin, Input inMax, Generator & gen,
                result_type limit = std::numeric_limits<result_type>::max())
 ```
-Returns a uniform random number in the specified range. Either between `0` and `target-1` or between `outMin` and `outMax` inclusive.
+Reads uniform integers from `gen`, and returns a uniform integer in the specifed range. The output range is either between `0` and `target-1` or between `outMin` and `outMax` inclusive.
 
 `gen` is a random number engine, producing a uniform random number between `inMin` and `inMax`. If `inMin` and `inMax` are not specified, then `gen.min()` and `gen.max()` are used.
 
@@ -75,13 +108,19 @@ Returns a uniform random number in the specified range. Either between `0` and `
 
 `limit` controls the size of buffered entropy but there is normally no need to specify this.
 
+`convert` uses constant time and memory. It does not allocate any memory.
+
+Exceptions: `convert` is exception neutral to `gen` throwing exceptions. If `gen()`, `gen.max()` or `gen.min()` throws an exception, then this is passed out of `convert` without consuming entropy or invalidating the internal state of `entropy_converter`.
+
+Specifying an invalid input or output range throws `std::invalid_argument`.
+
 ### Convenience methods
 
 ```c++
 template<typename Generator>
 auto with_generator(Generator &gen)
 ```
-Returns a functor taking an integer argument `x`, that returns a uniform random numer between 0 and `x-1`.
+Returns a functor taking an integer argument `x` returning a uniform random numer between 0 and `x-1`.
 
 Example: `std::random_shuffle(cards.begin(), cards.end(), c.with_generator(d));`
 
@@ -89,13 +128,21 @@ Example: `std::random_shuffle(cards.begin(), cards.end(), c.with_generator(d));`
 template<typename Result>
 auto make_uniform(Result a, Result b)
 ```
-Returns a functor taking a generator, and returns a uniform random number between `a` and `b`.
+Returns a functor taking a generator returning a uniform random number between `a` and `b`.
 
 ```c++
 template<typename Result, typename Generator>
 auto make_uniform(Result a, Result b, Generator &gen)
 ```
-Returns a functor taking no arguments, and returns a uniform random number between `a` and `b`.
+Returns a functor taking no arguments returning a uniform random number between `a` and `b`.
+
+### Exceptions
+
+`entropy_converter` does not throw exceptions.
+
+### Thread safety
+
+`entropy_converter` is not threadsafe. Different instances of `entropy_converter` do not interact and can be used in different threads.
 
 ## Theoretical background
 Producing uniform random numbers from a hardware source presents two challenges:
