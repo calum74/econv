@@ -178,12 +178,15 @@ The simple solution, `rand()%n`, is wrong because the resulting distribution wil
 A correct solution is something like
 
 ```
-do:
-    x = fetch_some_entropy()
-while x>=n
+int convert(int output_size, int input_size)
+    do:
+        x = read_entropy_from_device(input_size)
+    while x >= output_size
+    return x
 ```
-
 Whilst this is correct, it is not very efficient in terms of its entropy conversion. It loses entropy for three reasons. Firstly, the algorithm may loop several times, and entropy is lost on each iteration. Secondly, the condition `x>=n` itself destroys entropy, and thirdly, the residual entropy in `x` is thrown away each iteration.
+
+There is another limitation, which is that `input_size` must be larger than `output_size`.
 
 *econv* uses a modified algorithm that addresses these problems:
 
@@ -192,46 +195,47 @@ init():
     value=0
     range=1
 
-int fetch(int base):
-    while range<c/base:
-        value = value * base + read_entropy_from device(base)
-        range  = range * base
-
-int convert(int n, int base=2):
-	do:
-		fetch(base)
-		kn = range - range%n
-		if value < kn:
-			result = value % n
-			value = value/n
-			range = kn/n
-			return result
-		else
-			value -= kn
-			range -= kn
-	loop
+int convert(int output_size, int input_size=2):
+    do:
+        while range < c/input_size:
+            value = value * input_size + read_entropy_from device(input_size)
+            range  = range * input_size
+        restrict = range - range % output_size
+        if value < restrict:
+            result = value % output_size
+            value = value / output_size
+            range = restrict / output_size
+            return result
+        else:
+            value -= restrict
+            range -= restrict
+    loop
 ```
-The algorithm stores entropy in the variable `value`, which is a uniform random number between `0` and `range-1`. Initially, `value` contains no entropy, but as soon as `convert` is called, the algorithm reads as much entropy as possible from the outside source into the `value`, up to a maximum of `c`. In general, `value` will contain entropy from the previous iteration, but the invariant is that value is a uniform random variable between `0` and `range-1`.
+The algorithm stores entropy in the variable `value`, which is a uniform random number between `0` and `range-1`. Initially, `value` contains no entropy, but as soon as `convert` is called, the algorithm reads as much entropy as possible from the outside source into the `value`, up to a maximum of `c`. In general, `value` will contain entropy from the previous iteration, but the invariant is that `value` is a uniform random variable between `0` and `range-1`.
 
-Next, the algorithm find the highest multiple of `n`, `kn`, smaller than `range`, by subtracting the modulus. If `value<kn`, then we know that `value` is a uniform random variable less than `kn`, so we can factorize the uniform random variable into two parts: `k` and `n`. We return a random variable of size `n`, and the remaining entropy is stored in `value` for the next time `convert` is called.
+Next, the algorithm find the highest multiple of `output_size` smaller than `range`, by subtracting the modulus and storing the result in `restrict`. If `value<restrict`, then we know that `value` is a uniform random variable less than `restrict`, so we can factorize `restrict` into `output_size` and the new `range`. We return a random variable of size `output_size`, and the remaining entropy is stored in `value` for the next time `convert()` is called.
 
-If `value<kn` is false, then value lies between `kn` and `range-1`. Thus we subtract `kn` from both `value` and `range`, preserving our invariant that `value` is between `0` and `range-1`.
+If `value<restrict` is false, then value lies between `residue` and `range-1`. Thus we subtract `residue` from `value` and `range`, preserving our invariant that `value` is between `0` and `range-1`.
 
 ## Analysis
-The only place this algorithm loses entropy is in the comparison `value<kn`, which yields a smaller random variable in both cases. The amount of entropy lost by this comparison is given by the [binary entropy function](https://en.wikipedia.org/wiki/Binary_entropy_function).
+The only place this algorithm loses entropy is in the comparison `value<restrict`, which yields a smaller random variable in both cases. The amount of entropy lost by this comparison is given by the [binary entropy function](https://en.wikipedia.org/wiki/Binary_entropy_function).
 
 Entropy loss per comparison = `-plgp - (1-p)lg(1-p)`
 
-Here, `p` is the probability of `value<kn`
+Here, `p` is the probability of `value<restrict`
 
-    p = P(value<kn) = kn/value = (range - range%n) / range > 1-n/range > 1-2n/c
+```math
+    p = P(value<restrict) = restrict/value = (range - range%output_size) / range > 1-output_size/range > 1-2*output_size/c
+```
+since `output_size > range/2`
 
 The expected number of times we go round the loop is `1/p`.
 
 Thus the expected entropy loss of this algorithm =
 
+```math
         (-plgp-(1-p)lg(1-p))/p 
-
+```
 We now see the purpose of fetching as much entropy as possible up front. It means that the entropy loss is tiny. For example if n=6 and c=2^64,  then n/C ~= 6.5e-19. This makes the entropy loss around 3.9e-17 bits per conversion.
 
 The `fetch()` function can be changed to fetch entropy of a different base `m`. In that case, `p > 1+nm/c`, which is in general very small (and therefore efficient), unless `n` or `m` are very large.
