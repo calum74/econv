@@ -44,17 +44,10 @@ public:
 	{
 	}
 
-	// Copying has no effect - we must never clone entropy.
-	entropy_converter(const entropy_converter&) : value(0), range(1), buffer(0), buffer_max(0)
-	{
-		reset();
-	}
-
-	// Assignment has no effect - we must never clone entropy.
-	entropy_converter operator=(const entropy_converter&)
-	{
-		return *this;
-	}
+	// We must not clone the internal entropy.
+	// Attempting this is probably a mistake so fail noisily.
+	entropy_converter(const entropy_converter&) = delete;
+	entropy_converter operator=(const entropy_converter&) = delete;
 
 	// Move the entropy from 'a'.
 	entropy_converter(entropy_converter&&a) : value(a.value), range(a.range), buffer(a.buffer), buffer_max(a.buffer_max)

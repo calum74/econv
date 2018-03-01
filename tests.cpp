@@ -290,19 +290,14 @@ void tests()
 	assert(c16.get_buffered_range() > 1);
 
 	// Copying attempts
-	auto c16a(c16);
 	assert(c16.get_buffered_range() > 1);
-	assert(c16a.get_buffered_range() == 1);
 	auto c16b(std::move(c16));
 	assert(c16.get_buffered_range() == 1);
 	assert(c16b.get_buffered_range() > 1);
 
 	// Assignment
-	c16a = c16b;
 	assert(c16b.get_buffered_range() > 1);
-	assert(c16a.get_buffered_range() == 1);
-	c16a = std::move(c16b);
-	assert(c16a.get_buffered_range() > 1);
+	c16 = std::move(c16b);
 	assert(c16b.get_buffered_range() == 1);
 
 	// Test range checks
