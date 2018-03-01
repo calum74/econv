@@ -223,7 +223,9 @@ void test_distribution_is_uniform(T range)
 		int n = 1000;
 		for (int i = 0; i < n; ++i)
 		{
-			totals[c.convert(range, d)]++;
+			auto x = c.convert(range, d);
+			assert(x >= 0 && x < range);
+			totals[x]++;
 			count++;
 		}
 		outputEntropy += n * std::log2((long double)range);
@@ -258,6 +260,19 @@ void test_entropy_consumption(T target)
 	} while (loss > expected);
 }
 
+template<typename Fn>
+void assert_throws(Fn fn)
+{
+	try
+	{
+		fn();
+		assert(!"Expected exception not thrown");
+	}
+	catch (std::range_error)
+	{
+	}
+}
+
 void tests()
 {
 	std::cout << "\nRunning tests\n";
@@ -289,6 +304,18 @@ void tests()
 	c16a = std::move(c16b);
 	assert(c16a.get_buffered_range() > 1);
 	assert(c16b.get_buffered_range() == 1);
+
+	// Test range checks
+	assert_throws([&]() {c16.convert(-1,d);});
+	assert_throws([&]() {c16.convert(0x1000000, d);});
+	c16.convert(0x1000000, 0x10001000, d); // Range ok.
+	assert_throws([&]() { c16.convert(10, 5, d); });
+	auto gen1 = []() { return 1; };
+	assert_throws([&]() { c16.convert(1, 0x4000, 1, 0x4000, gen1); });
+	assert_throws([&]() { c16.convert(1, 100, 2, 10, gen1); });
+	assert_throws([&]() { c16.convert(1, 100, 2, 3, gen1); });
+	assert_throws([&]() { c16.convert(1, 100, 1, 1, gen1); });
+	assert_throws([&]() { c16.convert(1, 100, 2, 1, gen1); });
 
 	// Test the quality of the output
 

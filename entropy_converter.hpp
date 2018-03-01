@@ -89,7 +89,8 @@ public:
 	template<typename Generator>
 	result_type convert(result_type target, Generator & gen)
 	{
-		if (target <= 0) throw std::invalid_argument("Output range is invalid");
+		if (target <= 0)
+			throw std::range_error("Output range is invalid");
 		return convert<result_type>(0, target - 1, gen);
 	}
 
@@ -113,8 +114,10 @@ public:
 	Result convert(Result outMin, Result outMax, Input inMin, Input inMax, Generator & gen, result_type limit = std::numeric_limits<result_type>::max())
 	{
 		if (outMin == outMax) return outMax;
-		if (outMin > outMax) throw std::invalid_argument("Invalid output range");
-		if (inMin >= inMax) throw std::invalid_argument("Invalid input range");
+		if (outMin > outMax)
+			throw std::range_error("Invalid output range");
+		if (inMin >= inMax)
+			throw std::range_error("Invalid input range");
 
 		auto target = 1 + outMax - outMin;
 		auto inRange = inMax - inMin;
@@ -124,15 +127,17 @@ public:
 			// buffer the output of gen in 'buffer'.
 
 			if (inRange > (Input)std::numeric_limits<buffer_type>::max())
-				throw std::invalid_argument("buffer_size too small");
+				throw std::range_error("buffer_size too small");
 
 			return outMin + convert_from_source(target, 2, limit, [=,&gen]()
 			{
 				if (buffer_max == 0)
 				{
 					auto g = gen();
-					if (g < inMin) throw std::invalid_argument("Input value too small");
-					if (g > inMax) throw std::invalid_argument("Input value too large");
+					if (g < inMin)
+						throw std::range_error("Input value too small");
+					if (g > inMax)
+						throw std::range_error("Input value too large");
 					buffer = g - inMin;
 					buffer_max = inRange;
 				}
@@ -176,7 +181,7 @@ public:
 	// std::log2 of this gives the entropy expressed in bits.
 	long double get_buffered_range() const
 	{
-		return (long double)range * (long double)buffer_max + range;
+		return (long double)range * (long double)buffer_max + (long double)range;
 	}
 
 private:
@@ -186,7 +191,8 @@ private:
 	template<typename Source>
 	result_type convert_from_source(result_type target, result_type src_range, result_type limit, Source source)
 	{
-		if (target > limit / src_range) throw std::invalid_argument("The output range is too large");
+		if (target > limit / src_range)
+			throw std::range_error("The output range is too large");
 
 		for (;;)
 		{
@@ -195,8 +201,10 @@ private:
 			while (range < limit / src_range)
 			{
 				auto s = source();
-				if (s < 0) throw std::invalid_argument("Input is too small");
-				if (s >= src_range) throw std::invalid_argument("Input is too large");
+				if (s < 0) throw
+					std::range_error("Input is too small");
+				if (s >= src_range) throw
+					std::range_error("Input is too large");
 				value = value * src_range + s;
 				range *= src_range;
 			}
