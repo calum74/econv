@@ -110,7 +110,7 @@ entropy_converter& operator=(const entropy_converter&) = delete;
 ```
 Moves the internal entropy buffer from another `entropy_converter`. The copy operator is deleted as it is almost certainly a mistake.
 
-### `convert`
+### `convert()`
 
 ```
 template<typename Generator>
@@ -133,9 +133,9 @@ The output range is either between `0` and `target-1` or between `outMin` and `o
 
 If the input range is a power of 2, then the input range must be represented by `buffer_type`, and the output range must be no more than `limit/2`. If the input range is not a power of 2, then the product of the input and output ranges must not exceed `limit`. These constraints can be changed by specifying a different `result_type` and `buffer_type` as template parameters to `entropy_converter`.
 
-`convert` uses constant time and memory. It does not allocate any memory.
+`convert()` uses constant time and memory. It does not allocate any memory.
 
-Exceptions: `convert` is exception neutral to `gen` throwing exceptions. If `gen()`, `gen.max()` or `gen.min()` throw an exception, then it is passed through `convert`.
+Exceptions: `convert()` is exception neutral to `gen` throwing exceptions. If `gen()`, `gen.max()` or `gen.min()` throw an exception, then it is passed through `convert()`.
 
 Specifying an invalid input or output range throws `std::range_error`.
 
@@ -218,7 +218,7 @@ Next, the algorithm find the highest multiple of `n`, `kn`, smaller than `range`
 If `value<kn` is false, then value lies between `kn` and `range-1`. Thus we subtract `kn` from both `value` and `range`, preserving our invariant that `value` is between `0` and `range-1`.
 
 ## Analysis
-The only place this algorithm loses entropy is in the comparison `value<kn`, which yields a smaller random variable in both cases. The amount of entropy lost by this comparison is given by the [binary entropy function] (https://en.wikipedia.org/wiki/Binary_entropy_function)
+The only place this algorithm loses entropy is in the comparison `value<kn`, which yields a smaller random variable in both cases. The amount of entropy lost by this comparison is given by the [binary entropy function](https://en.wikipedia.org/wiki/Binary_entropy_function).
 
 Entropy loss per comparison = `-plgp - (1-p)lg(1-p)`
 
