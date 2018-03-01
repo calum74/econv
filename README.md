@@ -218,7 +218,9 @@ Next, the algorithm find the highest multiple of `output_size` smaller than `ran
 If `value<restrict` is false, then value lies between `residue` and `range-1`. Thus we subtract `residue` from `value` and `range`, preserving our invariant that `value` is between `0` and `range-1`.
 
 ## Analysis
-The only place this algorithm loses entropy is in the comparison `value<restrict`, which yields a smaller random variable in both cases. The amount of entropy lost by this comparison is given by the [binary entropy function](https://en.wikipedia.org/wiki/Binary_entropy_function).
+The only place this algorithm loses entropy is in the comparison `value<restrict`, which yields a smaller random variable in both cases. After testing `value<restrict`, we either have a random number between `0` and `restrict-1`, or a random number between `restrict` and `range-1`.
+
+The amount of entropy lost by this comparison is given by the [binary entropy function](https://en.wikipedia.org/wiki/Binary_entropy_function).
 
 Entropy loss per comparison = `-plgp - (1-p)lg(1-p)`
 
