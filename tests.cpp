@@ -302,7 +302,7 @@ void tests()
 
 	// Test range checks
 	assert_throws([&]() {c16.convert(-1,d);});
-	assert_throws([&]() {c16.convert(0x1000000, d);});
+	assert_throws([&]() {c16.convert(0x8000, d);});
 	c16.convert(0x1000000, 0x10001000, d); // Range ok.
 	assert_throws([&]() { c16.convert(10, 5, d); });
 	auto gen1 = []() { return 1; };
