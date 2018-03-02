@@ -38,9 +38,7 @@ std::random_device d;
 int die_roll = c.convert(1,6,d);
 ```
 
-`entropy_converter` buffers entropy, since normally the input provides more entropy than is actually needed. `std::random_device` usually produces entropy in chunks of 32 bits. To ensure efficiency, it is important to use the same `entropy_converter` and not destroy it. Ideally, there would only be one instance of `entropy_converter`.
-
-Write
+`entropy_converter` buffers entropy, since normally the input provides more entropy than is actually needed. `std::random_device` produces entropy in chunks of 32 bits. To ensure efficiency, it is important to reuse the `entropy_converter`. Write
 
 ```c++
 entropy_converter<> c;	// Do this
@@ -58,7 +56,7 @@ for(int i=0; i<1000; ++i)
 }
 ```
 
-To shuffle an array, use the function `std::random_shuffle()`, which implements a perfect shuffle using the Fisher-Yates algorithm. The `with_generator()` method returns a functor that can be used by `std::random_shuffle()`. If the input source is perfectly uniform, then `entropy_converter` combined with `std::random_shuffle` produce theoretically perfect shuffles.
+To shuffle an array, use the function `std::random_shuffle()`, which implements a perfect shuffle using the [Fisher-Yates algorithm](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle). The `with_generator()` method returns a functor that can be used by `std::random_shuffle()`. If the input source is perfectly uniform, then `entropy_converter` combined with `std::random_shuffle` produce theoretically perfect shuffles.
 
 For example,
 
@@ -78,20 +76,19 @@ std::random_shuffle(cards.begin(), cards.end(), c.with_generator(d));
 template<typename T=unsigned, typename U=unsigned>
 class entropy_converter<T, U>
 ```
-See the next section for a description of the type parameters `T` and `U`.
 
 ### Member types
 ```c++
 typedef T result_type;
 ```
-The datatype used to store non-binary entropy. The larger this data type, the more efficient the entropy conversion becomes, but the entropy converter would pre-fetch more entropy up to the size of `result_type`.
+The datatype used to store non-binary entropy. The larger this data type, the more efficient the entropy conversion, but the entropy converter pre-fetches more entropy up to the size of `result_type`.
 
 To ensure good efficiency, the size of `result_type` should be much larger than the output range, and *must* be twice as large as the maximum output range required.
 
 ```c++
 typedef U buffer_type;
 ```
-The datatype used to store binary entropy.  It must be at least as large as the binary input device, and defaults to `unsigned` which is the size of data produced by `std::random_device`.
+The datatype used to store binary entropy.  It must be large enough to hold the binary input, and defaults to `unsigned` which is the output of `std::random_device`.
 
 ### Constructors
 
@@ -100,17 +97,17 @@ entropy_converter();
 entropy_converter(entropy_converter&&);
 entropy_converter(const entropy_converter&) = delete;
 ```
-Initializes the entropy converter. The copy constructor is deleted as it is not permitted to clone entropy and is almost certainly a mistake.
+Initializes the entropy converter. The copy constructor is deleted as it is not correct to clone the internal entropy.
 
-### `operator =`
+### = operator
 
 ```c++
 entropy_converter& operator=(entropy_converter&&);
 entropy_converter& operator=(const entropy_converter&) = delete;
 ```
-Moves the internal entropy buffer from another `entropy_converter`. The copy operator is deleted as it is almost certainly a mistake.
+Moves the internal entropy buffer from another `entropy_converter`. The copy operator is deleted as it is almost certainly not intended.
 
-### `convert()`
+### convert method
 
 ```
 template<typename Generator>
@@ -184,7 +181,7 @@ int convert(int output_size, int input_size)
     while x >= output_size
     return x
 ```
-Whilst this is correct, it is not very efficient in terms of its entropy conversion. It loses entropy for three reasons. Firstly, the algorithm may loop several times, and entropy is lost on each iteration. Secondly, the condition `x>=n` itself destroys entropy, and thirdly, the residual entropy in `x` is thrown away each iteration.
+Whilst this is correct, it is not very efficient in terms of its entropy conversion. It loses entropy for three reasons. Firstly, the algorithm may loop several times, and entropy is lost on each iteration. Secondly, the condition `>=` itself destroys entropy, and thirdly, the residual entropy in `x` is thrown away each iteration.
 
 There is another limitation, which is that `input_size` must be larger than `output_size`.
 
@@ -197,7 +194,7 @@ init():
 
 int convert(int output_size, int input_size=2):
     do:
-        while range < c/input_size:
+        while range < limit / input_size:
             value = value * input_size + read_entropy_from device(input_size)
             range  = range * input_size
         restrict = range - range % output_size
@@ -211,37 +208,38 @@ int convert(int output_size, int input_size=2):
             range -= restrict
     loop
 ```
-The algorithm stores entropy in the variable `value`, which is a uniform random number between `0` and `range-1`. Initially, `value` contains no entropy, but as soon as `convert` is called, the algorithm reads as much entropy as possible from the outside source into the `value`, up to a maximum of `c`. In general, `value` will contain entropy from the previous iteration, but the invariant is that `value` is a uniform random variable between `0` and `range-1`.
+The algorithm stores entropy in the variable `value`, which is a uniform random integer between `0` and `range-1`. Initially, `value` contains no entropy, but as soon as `convert` is called, the algorithm reads as much entropy as possible from the input source into the `value`, up to a maximum of `limit`. In general, `value` will contain entropy from the previous iteration, but the invariant is that `value` is a uniform random variable between `0` and `range-1`.
 
-Next, the algorithm find the highest multiple of `output_size` smaller than `range`, by subtracting the modulus and storing the result in `restrict`. If `value<restrict`, then we know that `value` is a uniform random variable less than `restrict`, so we can factorize `restrict` into `output_size` and the new `range`. We return a random variable of size `output_size`, and the remaining entropy is stored in `value` for the next time `convert()` is called.
+Next, the algorithm find the highest multiple of `output_size` smaller than `range`, by subtracting the modulus and storing the result in `restrict`. If `value < restrict`, then we know that `value` is a uniform random variable less than `restrict`, so we can factorize `restrict` into `output_size` and the new `range`. We return a random variable of size `output_size`, and the remaining entropy is stored in `value` for the next time `convert()` is called.
 
-If `value<restrict` is false, then value lies between `residue` and `range-1`. Thus we subtract `residue` from `value` and `range`, preserving our invariant that `value` is between `0` and `range-1`.
+If `value < restrict` is false, then value lies between `restrict` and `range-1`. Thus we subtract `restrict` from `value` and `range`, preserving our invariant that `value` is between `0` and `range-1`.
 
 ## Analysis
-The only place this algorithm loses entropy is in the comparison `value<restrict`, which yields a smaller random variable in both cases. After testing `value<restrict`, we either have a random number between `0` and `restrict-1`, or a random number between `restrict` and `range-1`.
+The only place this algorithm loses entropy is in the comparison `value < restrict`. After we have performed `value < restrict`, we either have a random number between `0` and `restrict-1`, or a random number between `restrict` and `range-1`. Both of these random numbers contain less entropy than the original number.
 
-The amount of entropy lost by this comparison is given by the [binary entropy function](https://en.wikipedia.org/wiki/Binary_entropy_function).
+The amount of entropy lost by this comparison can be shown to be the [binary entropy function](https://en.wikipedia.org/wiki/Binary_entropy_function).
 
-Entropy loss per comparison = `-plgp - (1-p)lg(1-p)`
+Entropy loss per comparison = `-plgp - qlgq`
 
-Here, `p` is the probability of `value<restrict`
+where
 
-```math
-    p = P(value<restrict) = restrict/value = (range - range%output_size) / range > 1-output_size/range > 1-2*output_size/c
 ```
-since `output_size > range/2`
-
-The expected number of times we go round the loop is `1/p`.
-
-Thus the expected entropy loss of this algorithm =
-
-```math
-        (-plgp-(1-p)lg(1-p))/p 
+    p =  P(value<restrict)
+      =  restrict / range
+      =  (range - range%output_size) / range
+      >  1 - output_size/range
+      >= 1 - input_size*output_size/limit       // Since range >= limit/input_size
+      
+    q =  1 - p
+      < input_size * output_size / limit
 ```
-We now see the purpose of fetching as much entropy as possible up front. It means that the entropy loss is tiny. For example if n=6 and c=2^64,  then n/C ~= 6.5e-19. This makes the entropy loss around 3.9e-17 bits per conversion.
 
-The `fetch()` function can be changed to fetch entropy of a different base `m`. In that case, `p > 1+nm/c`, which is in general very small (and therefore efficient), unless `n` or `m` are very large.
+The expected number of times we go round the loop is `1/p`, so the expected entropy loss of this algorithm =
 
-It follows that the entropy loss is governed by the ration `n/c`, and the larger c, the more efficient the entropy conversion. For example, `entropy_converter<uint64_t>` is more efficient than `entropy_converter<uint32_t>`, at the expense of slightly more buffering.
+```
+    (-plgp-qlgq)/p 
+```
 
-If the input to *econv* is perfect, then its output will be perfectly distributed independent random numbers. *econv* can be used as a normal uniform random number generator to supply uniform random numbers to a shuffling algorithm like Fisher-Yates. Since the random numbers are perfect, then the result of the shuffle will be perfect as well.
+We now see the purpose of fetching as much entropy as possible up front. In order to achieve efficient conversion, we make `q` as small as possible, which is done by making `limit` as large as possible (e.g. 2^64), and `input_size` as small as possible, i.e. 2.
+
+`limit` is governed by the size of `result_type`, therefore `entropy_converter<uint64_t>` is more efficient than `entropy_converter<uint32_t>`, at the expense of slightly more buffering.
