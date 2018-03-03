@@ -43,7 +43,7 @@ int die_roll = c.convert(1,6,d);
 ```c++
 entropy_converter<> c;	// Do this
 for(int i=0; i<1000; ++i)
-	std::cout << c.convert(1,6,d);
+    std::cout << c.convert(1,6,d);
 ```
 
 and not
@@ -51,8 +51,8 @@ and not
 ```c++
 for(int i=0; i<1000; ++i)
 {
-	entropy_converter<> c;	// Do not do this
-	std::cout << c.convert(1,6,d);
+    entropy_converter<> c;	// Do not do this
+    std::cout << c.convert(1,6,d);
 }
 ```
 
@@ -195,7 +195,7 @@ int convert(int output_size, int input_size=2):
     do:
         while range < limit / input_size:
             value = value * input_size + read_entropy_from device(input_size)
-            range  = range * input_size
+            range = range * input_size
         restrict = range - range % output_size
         if value < restrict:
             result = value % output_size
