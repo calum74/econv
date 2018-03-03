@@ -31,11 +31,14 @@ In the following example, the `convert` function is used to read entropy from `s
 ```c++
 #include <entropy_converter.hpp>
 #include <random>  // For std::random_device
+#include <iostream>
 
-entropy_converter<> c;
-std::random_device d;
-
-int die_roll = c.convert(1,6,d);
+int main()
+{
+    entropy_converter<> c;
+    std::random_device d;
+    std::cout << c.convert(1,6,d) << std::endl;
+}
 ```
 
 `entropy_converter` buffers entropy between invocations of `convert()`. To ensure efficiency, it is important to reuse the same instance of `entropy_converter`. For example, write
@@ -58,14 +61,26 @@ for(int i=0; i<1000; ++i)
 
 To shuffle an array, use the function `std::random_shuffle()`, which implements a perfect shuffle using the [Fisher-Yates algorithm](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle). The `with_generator()` method returns a functor that can be used by `std::random_shuffle()`. If the input source is perfectly uniform, then `entropy_converter` combined with `std::random_shuffle` produce theoretically perfect shuffles.
 
-For example,
+The following example outputs a random deck of cards:
 
 ```c++
+#include <entropy_converter.hpp>
+#include <random>
 #include <algorithm>   // For std::random_shuffle
+#include <numeric>
+#include <iostream>
 
-std::vector<int> cards{52};
-
-std::random_shuffle(cards.begin(), cards.end(), c.with_generator(d));
+int main()
+{
+    entropy_converter<> c;
+    std::random_device d;
+    std::vector<int> cards(52);
+    std::iota(cards.begin(), cards.end(), 0);
+    std::random_shuffle(cards.begin(), cards.end(), c.with_generator(d));
+    for(auto card : cards)
+        std::cout << "A23456789TJQK"[card%13] << "CHSD"[card/13] << " ";
+    std::cout << std::endl;
+}
 ```
 
 ## Reference
@@ -252,18 +267,18 @@ We now see the purpose of fetching as much entropy as possible up front. In orde
 The previous section gave a conservative estimate for entropy loss based on the range of possible values for `range` and `restrict`.
 
 ```
-	limit/input_size < range <= limit
-	range <= restrict < range+output_size
+    limit/input_size < range <= limit
+    range <= restrict < range+output_size
 ```
 
 If we instead take `range` and `restrict` to be in the middle of their potential ranges, we get
 
 ```
-   E(p) = E(restrict/range)
-        = E(restrict)/E(range)
-        = (K-output_size)/(K+1)
+    E(p) = E(restrict/range)
+         = E(restrict)/E(range)
+         = (K-output_size)/(K+1)
 
-  K = limit + limit/input_size
+       K = limit + limit/input_size
 ```
 
 We can then use Equation (3) to give us the expected entropy loss. Again we note that larger `limit`, smaller `input_size` and smaller `output_size` give lower entropy loss.
