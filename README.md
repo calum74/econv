@@ -111,14 +111,14 @@ Moves the internal entropy buffer from another `entropy_converter`. The copy ope
 
 ```c++
 template<typename Generator>
-result_type convert(result_type target, Generator & gen)
+result_type convert(result_type target, Generator & gen);
 
 template<typename Result, typename Generator>
-Result convert(Result outMin, Result outMax, Generator & gen)
+Result convert(Result outMin, Result outMax, Generator & gen);
 
 template<typename Result, typename Input, typename Generator>
 Result convert(Result outMin, Result outMax, Input inMin, Input inMax, Generator & gen,
-               result_type limit = std::numeric_limits<result_type>::max())
+               result_type limit = std::numeric_limits<result_type>::max());
 ```
 This method reads uniform integers from `gen` and returns uniform integers in the specified range.
 
@@ -227,11 +227,11 @@ Entropy loss per comparison =
 where
 
 ```
-(2)  p =  P(value<restrict)
-      =  restrict / range
-      =  (range - range%output_size) / range
-      >  1 - output_size/range
-      >= 1 - input_size*output_size/limit       // Since range >= limit/input_size
+(2) p = P(value<restrict)
+      = restrict / range
+      = (range - range%output_size) / range
+      > 1 - output_size/range
+      > 1 - input_size*output_size/limit       // Since range > limit/input_size
       
     q =  1 - p
       < input_size * output_size / limit
@@ -266,4 +266,4 @@ If we instead take `range` and `restrict` to be in the middle of their potential
   K = limit + limit/input_size
 ```
 
-We can then use Equation (3) to give us the expected entropy loss. Again we note that larger  `limit`, smaller `input_size` and smaller `output_size` imply lower entropy loss.
+We can then use Equation (3) to give us the expected entropy loss. Again we note that larger `limit`, smaller `input_size` and smaller `output_size` give lower entropy loss.
