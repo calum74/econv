@@ -26,7 +26,7 @@ The purpose of `entropy_converter` is to convert uniform random numbers from one
 
 The input and output ranges can be variable, and the input range does not need to be a power of 2.
 
-In the following example, the `convert` function is used to read entropy from `std::random_device` and stores the result in the variable `die_roll`.
+In the following example, the `convert` function is used to read entropy from `std::random_device` and returns a random number between 1 and 6.
 
 ```c++
 #include <entropy_converter.hpp>
@@ -44,7 +44,7 @@ int main()
 `entropy_converter` buffers entropy between invocations of `convert()`. To ensure efficiency, it is important to reuse the same instance of `entropy_converter`. For example, write
 
 ```c++
-entropy_converter<> c;	// Do this
+entropy_converter<> c;  // Do this
 for(int i=0; i<1000; ++i)
     std::cout << c.convert(1,6,d);
 ```
@@ -54,7 +54,7 @@ and not
 ```c++
 for(int i=0; i<1000; ++i)
 {
-    entropy_converter<> c;	// Do not do this
+    entropy_converter<> c;  // Do not do this
     std::cout << c.convert(1,6,d);
 }
 ```
