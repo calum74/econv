@@ -104,6 +104,7 @@ void measure_shuffle()
 	// Measure actual entropy used generating n shuffles
 	LD outputEntropy = 0.0;
 	LD maxEntropyLoss = 0.0;
+	LD expectedEntropyLoss = 0.0;
 	for (int i = 0; i < n; ++i)
 	{
 		for (T t = 2; t <= 52; ++t)
@@ -111,6 +112,7 @@ void measure_shuffle()
 			g.convert(t, d);
 			outputEntropy += std::log2(LD(t));
 			maxEntropyLoss += max_entropy_loss(t);
+			expectedEntropyLoss += expected_entropy_loss(t);
 		}
 	}
 
@@ -121,23 +123,24 @@ void measure_shuffle()
 	std::cout << "  Output entropy = " << outputEntropy << " bits\n";
 	std::cout << std::setprecision(6);
 	std::cout << "  Measured entropy loss per shuffle = " << (inputEntropy - outputEntropy) / n << " bits\n";
+	std::cout << "  Est. entropy loss per shuffle = " << expectedEntropyLoss / n << " bits\n";
 	std::cout << "  Upper bound entropy loss per shuffle = " << maxEntropyLoss / n << " bits\n";
 }
 
 // Measure actual entropy used to convert numbers from one base to another.
 template<typename T>
-void measure_conversion(int from, int to)
+void measure_conversion(T from, T to)
 {
 	entropy_converter<T> c1, c2;
 	std::random_device d;
 
-	int n = 1000;
+	int n = 10000;
 	double inputEntropy = 0.0, outputEntropy = 0.0;
 	auto src = [&]() { inputEntropy += std::log2(from); return c1.convert(from, d);  };
 
 	for (int i = 0; i < n; ++i)
 	{
-		c2.convert(1,to, 0,from-1, src);
+		c2.convert(T(1),to, T(0),T(from-1), src);
 		outputEntropy += std::log2(to);
 	}
 
@@ -149,6 +152,7 @@ void measure_conversion(int from, int to)
 	std::cout << "  Output entropy = " << outputEntropy << " bits\n";
 	std::cout << std::setprecision(6);
 	std::cout << "  Measured entropy loss per conversion = " << (inputEntropy - outputEntropy) / n << " bits\n";
+	std::cout << "  Estimated entropy loss per conversion = " << expected_entropy_loss(to, from) << " bits\n";
 	std::cout << "  Upper bound entropy loss per conversion = " << max_entropy_loss(to, from) << " bits\n";
 }
 
@@ -329,6 +333,13 @@ void tests()
 	std::cout << "Tests passed\n";
 }
 
+void measure_conversions(int from, int to)
+{
+	measure_conversion<std::uint16_t>(from, to);
+	measure_conversion<std::uint32_t>(from, to);
+	measure_conversion<std::uint64_t>(from, to);
+}
+
 void measurements()
 {
 #ifndef __clang__  // Not working on clang due to bug in library
@@ -358,10 +369,9 @@ void measurements()
 	measure_shuffle<std::uint32_t>();
 	measure_shuffle<std::uint64_t>();
 
-	measure_conversion<std::uint32_t>(10, 11);
-	measure_conversion<std::uint64_t>(10, 11);
-	measure_conversion<std::uint32_t>(10, 9);
-	measure_conversion<std::uint64_t>(10, 9);
+	measure_conversions(2,6);
+	measure_conversions(10,9);
+	measure_conversions(10,11);
 
 	measure_expected_entropy<std::uint16_t>();
 	measure_expected_entropy<std::uint32_t>();
