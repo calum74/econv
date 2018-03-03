@@ -109,7 +109,7 @@ Moves the internal entropy buffer from another `entropy_converter`. The copy ope
 
 ### convert method
 
-```
+```c++
 template<typename Generator>
 result_type convert(result_type target, Generator & gen)
 
@@ -176,7 +176,7 @@ The simple solution, `rand()%n`, is wrong because the resulting distribution wil
 A correct solution would be
 
 ```
-int convert(int output_size, int input_size)
+int convert(int output_size, int input_size):
     do:
         x = read_entropy_from_device(input_size)
     while x >= output_size
