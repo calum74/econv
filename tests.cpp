@@ -24,8 +24,11 @@ LD max_entropy_loss(T out, T in = 2)
 template<typename T>
 LD expected_entropy_loss(T out, T in = 2)
 {
-	LD p = LD(out - 2)*LD(in) / (3.0*LD(std::numeric_limits<T>::max())), q = 1.0 - p;
-	return (-p * std::log2(p) - q * std::log2(q)) / q;
+	LD limit = std::numeric_limits<T>::max();
+	LD k = limit + limit/in;
+	LD p = (k-out)/(k+1);
+	LD q = 1-p;
+	return (-p * std::log2(p) - q * std::log2(q)) / p;
 }
 
 template<typename T>
@@ -239,7 +242,6 @@ void test_distribution_is_uniform(T range)
 				break;
 			}
 		}
-		double inputEntropy = d.entropy() - std::log2(c.get_buffered_range());
 	} while (!valid);
 }
 
@@ -329,6 +331,7 @@ void tests()
 
 void measurements()
 {
+#ifndef __clang__  // Not working on clang due to bug in library
 	{
 		int array[52];
 		MeasuringRandomDevice d;
@@ -344,6 +347,7 @@ void measurements()
 			d6(d);
 		std::cout << "Entropy used by std::uniform_int_distribution(1,6) = " << d.entropy() / n << " bits\n";
 	}
+#endif
 
 	std::cout << "Upper bound entropy loss of generating a 1-6, 64-bit buffer = " << max_entropy_loss(uint64_t(6)) << " bits\n";
 	std::cout << "Upper bound entropy loss of shuffling 52 cards, 64-bit buffer = " << max_shuffle_loss(uint64_t(52)) << " bits\n";

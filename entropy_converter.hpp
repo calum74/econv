@@ -122,7 +122,7 @@ public:
 			if (inRange > (Input)std::numeric_limits<buffer_type>::max())
 				throw std::range_error("buffer_size too small");
 
-			return outMin + convert_from_source(target, 2, limit, [=,&gen]()
+			return outMin + (Result)convert_from_source(target, 2, limit, [=,&gen]()
 			{
 				if (buffer_max == 0)
 				{
@@ -131,8 +131,8 @@ public:
 						throw std::range_error("Input value too small");
 					if (g > inMax)
 						throw std::range_error("Input value too large");
-					buffer = g - inMin;
-					buffer_max = inRange;
+					buffer = (buffer_type)(g - inMin);
+					buffer_max = (buffer_type)inRange;
 				}
 				auto r = buffer & 1;
 				buffer >>= 1;
@@ -142,7 +142,10 @@ public:
 		}
 		else
 		{
-			return outMin + convert_from_source(target, inRange + 1, limit, [=,&gen]()
+			if (inRange >= std::numeric_limits<result_type>::max())
+				throw std::range_error("buffer_size too small");
+
+			return outMin + (Result)convert_from_source(target, (result_type)(inRange + 1), limit, [=,&gen]()
 			{
 				return gen() - inMin;
 			});
@@ -193,7 +196,7 @@ private:
 			// This is counterintuitive but gives a very high conversion efficiency.
 			while (range < limit / src_range)
 			{
-				auto s = source();
+				result_type s = (result_type)source();
 				if (s < 0) throw
 					std::range_error("Input is too small");
 				if (s >= src_range) throw
