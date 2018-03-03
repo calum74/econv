@@ -12,7 +12,7 @@ The entire library can be distributed as a single source file, [entropy_converte
 
 There is also a test suite and demo, [tests.cpp](tests.cpp), that can be compiled using `g++ tests.cpp --std=c++14` with GCC, or `cl tests.cpp` with Microsoft C++.
 
-Compatibility: C++14. Tested with Visual Studio 2017 and g++ 5.4.
+Compatibility: C++14. Tested with Visual Studio 2017, clang 9.0 and g++ 5.4.
 
 ## Usage
 
@@ -219,12 +219,16 @@ The only place this algorithm loses entropy is in the comparison `value < restri
 
 The amount of entropy lost by this comparison can be shown to be the [binary entropy function](https://en.wikipedia.org/wiki/Binary_entropy_function).
 
-Entropy loss per comparison = `-plgp - qlgq`
+Entropy loss per comparison =
+
+```
+(1)  -plg(p) - qlg(q)
+```
 
 where
 
 ```
-    p =  P(value<restrict)
+(2)  p =  P(value<restrict)
       =  restrict / range
       =  (range - range%output_size) / range
       >  1 - output_size/range
@@ -237,9 +241,30 @@ where
 The expected number of times we go round the loop is `1/p`, so the expected entropy loss of this algorithm =
 
 ```
-    (-plgp-qlgq)/p 
+(3)  (-plgp - qlgq)/p
 ```
 
 We now see the purpose of fetching as much entropy as possible up front. In order to achieve efficient conversion, we make `q` as small as possible, which is done by making `limit` as large as possible (e.g. 2^64), and `input_size` as small as possible, i.e. 2.
 
 `limit` is governed by the size of `result_type`, therefore `entropy_converter<uint64_t>` is more efficient than `entropy_converter<uint32_t>`, at the expense of slightly more buffering.
+
+## A better estimate of entropy loss
+
+The previous section gave a conservative estimate for entropy loss based on the possible value for `range` and `restrict`.
+
+```
+	limit/input_size < range <= limit
+	range <= restrict < range+output_size
+```
+
+If we instead take `range` and `restrict` to be in the middle of their potential ranges, we get
+
+```
+   E(p) = E(restrict/range)
+        = E(restrict)/E(range)
+        = (K-output_size)/(K+1)
+
+  K = limit + limit/input_size
+```
+
+We can then use Equation (3) to give us the expected entropy loss. Again we note that larger  `limit`, smaller `input_size` and smaller `output_size` imply lower entropy loss.
