@@ -78,7 +78,7 @@ int main()
     std::iota(cards.begin(), cards.end(), 0);
     std::random_shuffle(cards.begin(), cards.end(), c.with_generator(d));
     for(auto card : cards)
-        std::cout << "A23456789TJQK"[card%13] << "CHSD"[card/13] << " ";
+        std::cout << "A23456789TJQK"[card%13] << "SHCD"[card/13] << " ";
     std::cout << std::endl;
 }
 ```
