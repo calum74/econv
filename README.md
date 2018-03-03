@@ -1,20 +1,20 @@
 # Efficient entropy conversion
 
 ## Overview
-_econv_ is an easy to use C++ library to generate perfect random numbers, and perfect shuffles, directly from hardware entropy.
+_econv_ is an easy to use C++ library to generate perfect random numbers, and perfect shuffles, directly from a hardware entropy source.
 
-This algorithm converts entropy very efficiently, which means that very little of the entropy produced by the hardware device is lost in the conversion process. This is interesting from an algorithmic perspective, and practical in case that hardware entropy is a limited resource.
+The algorithm converts entropy very efficiently, which means that very little entropy is lost in the conversion process. This is interesting from an algorithmic perspective, and practical in case that hardware entropy is a limited resource.
 
-For example, shuffling a deck of 52 cards using `std::shuffle` would read 1632 bits of entropy, losing 1406 bits of hardware entropy each time a deck was shuffled. *econv* loses around 8.6e-15 bits. Similarly, `std::uniform_int_distribution` reads at least 32 bits of entropy to produce a single die throw, losing over 29 bits per output, whereas *econv* would lose just 3.9e-17 bits on average.
+For example, shuffling a deck of 52 cards using `std::shuffle` reads 1632 bits of entropy, losing 1406 bits of entropy each time. _econv_ loses around 8.6e-15 bits. Similarly, `std::uniform_int_distribution` reads at least 32 bits of entropy to produce a single die throw, losing over 29 bits, whereas *econv* would lose on average just 3.9e-17 bits.
 
 ## Setup
-The entire library can be distributed as a single source file, [entropy_converter.hpp](entropy_converter.hpp).
+The entire library consists of a single header file, [entropy_converter.hpp](entropy_converter.hpp), that can simply by copied to the desired location.
 
-There is also a test suite and demo, [tests.cpp](tests.cpp), that can be compiled using `g++ tests.cpp --std=c++14` with GCC, or `cl tests.cpp` with Microsoft C++.
+The test suite and demo, [tests.cpp](tests.cpp), can be compiled using `g++ tests.cpp --std=c++14` with GCC, or `cl tests.cpp` with Microsoft C++.
 
 Compatibility: C++14. Tested with Visual Studio 2017, clang 9.0 and g++ 5.4.
 
-## Usage
+## Quick guide
 
 The header file `entropy_converter.hpp` provides the `entropy_converter` class. As there is only one class, it is not in a namespace.
 
@@ -22,9 +22,9 @@ The header file `entropy_converter.hpp` provides the `entropy_converter` class. 
 #include <entropy_converter.hpp>
 ```
 
-The purpose of `entropy_converter` is to convert uniform random numbers from one range of values to another. Typically, `entropy_converter` reads entropy from `std::random_device`, and outputs uniform random numbers in a specified range, or can be used to shuffle an array.
+The purpose of `entropy_converter` is to convert uniform random numbers from one range of values to another. Typically, `entropy_converter` reads entropy from `std::random_device`, and outputs uniform random numbers in a specified range, or can be used with `std::random_shuffle()` to shuffle an array.
 
-The input and output range do not need to be fixed, and the input range does not need to be a power of 2.
+The input and output ranges can be variable, and the input range does not need to be a power of 2.
 
 In the following example, the `convert` function is used to read entropy from `std::random_device` and stores the result in the variable `die_roll`.
 
@@ -38,7 +38,7 @@ std::random_device d;
 int die_roll = c.convert(1,6,d);
 ```
 
-`entropy_converter` buffers entropy, since normally the input provides more entropy than is actually needed. `std::random_device` produces entropy in chunks of 32 bits. To ensure efficiency, it is important to reuse the `entropy_converter`. Write
+`entropy_converter` buffers entropy between invocations of `convert()`. To ensure efficiency, it is important to reuse the same instance of `entropy_converter`. For example, write
 
 ```c++
 entropy_converter<> c;	// Do this
@@ -83,7 +83,7 @@ typedef T result_type;
 ```
 The datatype used to store non-binary entropy. The larger this data type, the more efficient the entropy conversion, but the entropy converter pre-fetches more entropy up to the size of `result_type`.
 
-To ensure good efficiency, the size of `result_type` should be much larger than the output range, and *must* be twice as large as the maximum output range required.
+To ensure good efficiency, the size of `result_type` should be much larger than the output range, and *must* be at least twice as large as the maximum output range required.
 
 ```c++
 typedef U buffer_type;
@@ -105,7 +105,7 @@ Initializes the entropy converter. The copy constructor is deleted as it is not 
 entropy_converter& operator=(entropy_converter&&);
 entropy_converter& operator=(const entropy_converter&) = delete;
 ```
-Moves the internal entropy buffer from another `entropy_converter`. The copy operator is deleted as it is almost certainly not intended.
+Moves the internal entropy buffer from another `entropy_converter`. The copy operator is deleted as it is almost certainly not intended, and entropy must never be copied.
 
 ### convert method
 
@@ -124,11 +124,11 @@ This method reads uniform integers from `gen` and returns uniform integers in th
 
 The output range is either between `0` and `target-1` or between `outMin` and `outMax` inclusive.
 
-`gen` is a functor that returns an input value in the input range. It is compatible with C++ random number engines. The input range is defined implicitly by `gen.min()` and `gen.max()`, or can be explicitly supplied as arguments `inMin` and `inMax`.
+`gen` is a functor that returns a uniform random value in the input range. It is compatible with C++ random number engines. The input range is defined implicitly by `gen.min()` and `gen.max()`, or can be explicitly supplied as arguments `inMin` and `inMax`.
 
-`limit` controls the size of buffered entropy but there is normally no need to specify this as it is generally advantageous to buffer as much entropy as possible.
+`limit` controls the size of buffered entropy, but there is normally no need to specify this as it is generally desirable to buffer as much entropy as possible.
 
-If the input range is a power of 2, then the input range must be represented by `buffer_type`, and the output range must be no more than `limit/2`. If the input range is not a power of 2, then the product of the input and output ranges must not exceed `limit`. These constraints can be changed by specifying a different `result_type` and `buffer_type` as template parameters to `entropy_converter`.
+If the input range is a power of 2, then the input range must be represented by `buffer_type`, and the output range must be no more than `limit/2`. If the input range is not a power of 2, then the product of the input and output ranges must not exceed `limit`.
 
 `convert()` uses constant time and memory. It does not allocate any memory.
 
@@ -162,17 +162,18 @@ Returns a functor taking no arguments returning a uniform random number between 
 
 ### Thread safety
 
-`entropy_converter` is not synchronised and is not intended to be used concurrently. Concurrent access to an `entropy_converter` is undefined. In practise, it is probably a good idea to have one `entropy_converter` instance per thread.
+`entropy_converter` is not synchronised and concurrent access to an `entropy_converter` is undefined.
 
 ## Theoretical background
+
 Producing uniform random numbers from a hardware source presents two challenges:
 
 1) Ensuring that the resulting number is perfectly uniform
 2) Avoiding losing too much entropy in the conversion process.
 
-The simple solution, `rand()%n`, is wrong because the resulting distribution will always be biased, except when n is itself a power of 2. In fact any algorithm using a finite quantity of binary entropy results in a biased distribution, and the only correct solution is to allow for an unbounded amount of input entropy.
+The simple solution, `rand()%n`, is wrong because the resulting distribution will always be biased, except when n is itself a power of 2. In fact any algorithm using a finite quantity of binary entropy produces a biased distribution, and the only correct solution is to allow for an unbounded amount of input entropy.
 
-A correct solution is something like
+A correct solution would be
 
 ```
 int convert(int output_size, int input_size)
@@ -181,11 +182,9 @@ int convert(int output_size, int input_size)
     while x >= output_size
     return x
 ```
-Whilst this is correct, it is not very efficient in terms of its entropy conversion. It loses entropy for three reasons. Firstly, the algorithm may loop several times, and entropy is lost on each iteration. Secondly, the condition `>=` itself destroys entropy, and thirdly, the residual entropy in `x` is thrown away each iteration.
+Whilst this is correct, it is not very efficient in terms of its entropy conversion. It loses entropy for three reasons. Firstly, the algorithm may loop several times, and entropy is lost on each iteration. Secondly, the condition `>=` itself destroys entropy, and thirdly, the residual entropy in `x` is thrown away each iteration. Another limitation is that `input_size` must be larger than `output_size`.
 
-There is another limitation, which is that `input_size` must be larger than `output_size`.
-
-*econv* uses a modified algorithm that addresses these problems:
+_econv_ uses a modified algorithm that addresses these problems:
 
 ```
 init():
@@ -208,14 +207,14 @@ int convert(int output_size, int input_size=2):
             range -= restrict
     loop
 ```
-The algorithm stores entropy in the variable `value`, which is a uniform random integer between `0` and `range-1`. Initially, `value` contains no entropy, but as soon as `convert` is called, the algorithm reads as much entropy as possible from the input source into the `value`, up to a maximum of `limit`. In general, `value` will contain entropy from the previous iteration, but the invariant is that `value` is a uniform random variable between `0` and `range-1`.
+The algorithm stores entropy in the variable `value`, which is a uniform random integer between `0` and `range-1`. Initially, `value` contains no entropy, but as soon as `convert` is called, the algorithm reads as much entropy as possible from the input source into the `value`, up to a maximum of `limit`. In general, `value` will contain entropy from the previous iteration, with the invariant that `value` is a uniform random variable between `0` and `range-1`.
 
 Next, the algorithm find the highest multiple of `output_size` smaller than `range`, by subtracting the modulus and storing the result in `restrict`. If `value < restrict`, then we know that `value` is a uniform random variable less than `restrict`, so we can factorize `restrict` into `output_size` and the new `range`. We return a random variable of size `output_size`, and the remaining entropy is stored in `value` for the next time `convert()` is called.
 
 If `value < restrict` is false, then value lies between `restrict` and `range-1`. Thus we subtract `restrict` from `value` and `range`, preserving our invariant that `value` is between `0` and `range-1`.
 
 ## Analysis
-The only place this algorithm loses entropy is in the comparison `value < restrict`. After we have performed `value < restrict`, we either have a random number between `0` and `restrict-1`, or a random number between `restrict` and `range-1`. Both of these random numbers contain less entropy than the original number.
+The only place this algorithm loses entropy is in the comparison `value < restrict`. After we have performed `value < restrict`, we either have a random number between `0` and `restrict-1`, or a random number between `restrict` and `range-1`. Both of these random numbers contain less entropy than the original number, hence the entropy has been "lost", or more correctly, transferred into the expression `value < restrict`.
 
 The amount of entropy lost by this comparison can be shown to be the [binary entropy function](https://en.wikipedia.org/wiki/Binary_entropy_function).
 
@@ -238,7 +237,7 @@ where
       < input_size * output_size / limit
 ```
 
-The expected number of times we go round the loop is `1/p`, so the expected entropy loss of this algorithm =
+The expected number of times we go round the loop is `1/p`, so the expected entropy loss of `convert` is
 
 ```
 (3)  (-plgp - qlgq)/p
@@ -246,11 +245,11 @@ The expected number of times we go round the loop is `1/p`, so the expected entr
 
 We now see the purpose of fetching as much entropy as possible up front. In order to achieve efficient conversion, we make `q` as small as possible, which is done by making `limit` as large as possible (e.g. 2^64), and `input_size` as small as possible, i.e. 2.
 
-`limit` is governed by the size of `result_type`, therefore `entropy_converter<uint64_t>` is more efficient than `entropy_converter<uint32_t>`, at the expense of slightly more buffering.
+`limit` is determined by the size of `result_type`, therefore `entropy_converter<uint64_t>` is more efficient than `entropy_converter<uint32_t>`, at the expense of slightly more buffering.
 
 ## A better estimate of entropy loss
 
-The previous section gave a conservative estimate for entropy loss based on the possible value for `range` and `restrict`.
+The previous section gave a conservative estimate for entropy loss based on the range of possible values for `range` and `restrict`.
 
 ```
 	limit/input_size < range <= limit
