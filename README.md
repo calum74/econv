@@ -258,7 +258,7 @@ The expected number of times we go round the loop is `1/p`, so the expected entr
 (3)  (-plg(p) - qlg(q))/p
 ```
 
-We now see the purpose of fetching as much entropy as possible up front. In order to achieve efficient conversion, we make `q` as small as possible, which is done by making `limit` as large as possible (e.g. 2^64), and `input_size` as small as possible, i.e. 2.
+We now see the purpose of fetching as much entropy as possible up front. In order to achieve efficient conversion, we make `q` as small as possible, which is done by making `limit` as large as possible (e.g. 2^64-1), and `input_size` as small as possible, i.e. 2. When converting from a binary source producing (say) chunks of 32-bits, that is split so that the input size is 2 and not 2^32.
 
 `limit` is determined by the size of `result_type`, therefore `entropy_converter<uint64_t>` is more efficient than `entropy_converter<uint32_t>`, at the expense of slightly more buffering.
 
@@ -282,3 +282,24 @@ If we instead take `range` and `restrict` to be in the middle of their potential
 ```
 
 We can then use Equation (3) to give us the expected entropy loss. Again we note that larger `limit`, smaller `input_size` and smaller `output_size` give lower entropy loss.
+
+## Results
+
+The following table summarises some of the entropy losses when performing conversion, either per conversion, or per shuffle.
+
+| Conversion to    | From base | Buffer size (bits) | Est. loss (bits) | Max loss (bits) |
+|------------------|----------:|-------------------:|-----------------:|----------------:|
+| Roll a 1-6       | 2         | 16                 | 0.0011           | 0.0025          |
+|                  |           | 32                 | 3.4e-8           | 8.3e-8          |
+|                  |           | 64                 | 1.7e-17          | 4.0e-17         | 
+| Shuffle 52 cards | 2         | 16                 | 0.19             | 0.48            |
+|                  |           | 32                 | 6.4e-6           | 1.8e-5          |
+|                  |           | 64                 | 3.3e-15          | 8.87e-15        |
+| 1-9              | 10        | 16                 | 0.0020           | 0.015           |
+|                  |           | 32                 | 6.4e-8           | 5.6e-7          |
+|                  |           | 64                 | 2.4e-17          | 2.9e-16         |
+| 1-11             | 10        | 16                 | 0.0023           | 0.018           |
+|                  |           | 32                 | 7.6e-8           | 6.8e-7          |
+|                  |           | 64                 | 3.7e-17          | 3.5e-16         |
+
+
