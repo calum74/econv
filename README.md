@@ -258,7 +258,7 @@ The expected number of times we go round the loop is `1/p`, so the expected entr
 (3)  (-plg(p) - qlg(q))/p
 ```
 
-We now see the purpose of fetching as much entropy as possible up front. In order to achieve efficient conversion, we make `q` as small as possible, which is done by making `limit` as large as possible (e.g. 2^64^), and `input_size` as small as possible, i.e. 2.
+We now see the purpose of fetching as much entropy as possible up front. In order to achieve efficient conversion, we make `q` as small as possible, which is done by making `limit` as large as possible (e.g. 2^64), and `input_size` as small as possible, i.e. 2.
 
 `limit` is determined by the size of `result_type`, therefore `entropy_converter<uint64_t>` is more efficient than `entropy_converter<uint32_t>`, at the expense of slightly more buffering.
 
