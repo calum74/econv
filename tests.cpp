@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cassert>
 #include <algorithm>
+#include <numeric>
 
 typedef long double LD;
 
@@ -196,16 +197,15 @@ void examples()
 	// Roll a die
 	std::cout << "You rolled a " << d6(d) << std::endl;
 
-	// Shuffle an array
-	for (int i = 0; i < 4; ++i)
+	// Shuffle a deck of cards
 	{
-		const int n = 20;
-		int array[n];
-		for (int i = 0; i < n; ++i) array[i] = i;
-
-		std::random_shuffle(array, array + n, c.with_generator(d));
-
-		for (int i = 0; i < n; ++i) std::cout << array[i] << " ";
+		entropy_converter<> c;
+		std::random_device d;
+		std::vector<int> cards(52);
+		std::iota(cards.begin(), cards.end(), 0);
+		std::random_shuffle(cards.begin(), cards.end(), c.with_generator(d));
+		for(auto card : cards)
+			std::cout << "A23456789TJQK"[card%13] << "SHCD"[card/13] << " ";
 		std::cout << std::endl;
 	}
 }
