@@ -205,24 +205,24 @@ private:
 				range *= src_range;
 			}
 
-			// "restrict" is the highest multiple of target <= range
-			result_type restrict = range - range % target;
+			// "new_range" is the highest multiple of target <= range
+			result_type new_range = range - range % target;
 
-			if (value < restrict)
+			if (value < new_range)
 			{
 				// Transfer the right amount of entropy from "value"
 				// into "result", and leave the remaining entropy in "value"
 				// for the next time.
 				result_type r = value % target;
 				value /= target;
-				range = restrict / target;
+				range = new_range / target;
 				return r;
 			}
 			else
 			{
 				// Recycle the remaining entropy and try again.
-				value -= restrict;
-				range -= restrict;
+				value -= new_range;
+				range -= new_range;
 			}
 		}
 	}

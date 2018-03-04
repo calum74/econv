@@ -211,25 +211,25 @@ int convert(int output_size, int input_size=2):
         while range < limit / input_size:
             value = value * input_size + read_entropy_from device(input_size)
             range = range * input_size
-        restrict = range - range % output_size
-        if value < restrict:
+        new_range = range - range % output_size
+        if value < new_range:
             result = value % output_size
             value = value / output_size
-            range = restrict / output_size
+            range = new_range / output_size
             return result
         else:
-            value -= restrict
-            range -= restrict
+            value -= new_range
+            range -= new_range
     loop
 ```
 The algorithm stores entropy in the variable `value`, which is a uniform random integer between `0` and `range-1`. Initially, `value` contains no entropy, but as soon as `convert` is called, the algorithm reads as much entropy as possible from the input source into the `value`, up to a maximum of `limit`. In general, `value` will contain entropy from the previous iteration, with the invariant that `value` is a uniform random variable between `0` and `range-1`.
 
-Next, the algorithm find the highest multiple of `output_size` smaller than `range`, by subtracting the modulus and storing the result in `restrict`. If `value < restrict`, then we know that `value` is a uniform random variable less than `restrict`, so we can factorize `restrict` into `output_size` and the new `range`. We return a random variable of size `output_size`, and the remaining entropy is stored in `value` for the next time `convert()` is called.
+Next, the algorithm find the highest multiple of `output_size` smaller than `range`, by subtracting the modulus and storing the result in `new_range`. If `value < new_range`, then we know that `value` is a uniform random variable less than `new_range`, so we can factorize `new_range` into `output_size` and the new `range`. We return a random variable of size `output_size`, and the remaining entropy is stored in `value` for the next time `convert()` is called.
 
-If `value < restrict` is false, then value lies between `restrict` and `range-1`. Thus we subtract `restrict` from `value` and `range`, preserving our invariant that `value` is between `0` and `range-1`.
+If `value < new_range` is false, then value lies between `new_range` and `range-1`. Thus we subtract `new_range` from `value` and `range`, preserving our invariant that `value` is between `0` and `range-1`.
 
 ## Analysis
-The only place this algorithm loses entropy is in the comparison `value < restrict`. After we have performed `value < restrict`, we either have a random number between `0` and `restrict-1`, or a random number between `restrict` and `range-1`. Both of these random numbers contain less entropy than the original number, hence the entropy has been "lost", or more correctly, transferred into the expression `value < restrict`.
+The only place this algorithm loses entropy is in the comparison `value < new_range`. After we have performed `value < new_range`, we either have a random number between `0` and `new_range-1`, or a random number between `new_range` and `range-1`. Both of these random numbers contain less entropy than the original number, hence the entropy has been "lost", or more correctly, transferred into the expression `value < new_range`.
 
 The amount of entropy lost by this comparison can be shown to be the [binary entropy function](https://en.wikipedia.org/wiki/Binary_entropy_function).
 
@@ -242,8 +242,8 @@ Entropy loss per comparison =
 where
 
 ```
-(2) p = P(value<restrict)
-      = restrict / range
+(2) p = P(value<new_range)
+      = new_range / range
       = (range - range%output_size) / range
       > 1 - output_size/range
       > 1 - input_size*output_size/limit       // Since range > limit/input_size
@@ -268,14 +268,14 @@ The previous section gave a conservative estimate for entropy loss based on the 
 
 ```
     limit/input_size < range <= limit
-    range <= restrict < range+output_size
+    range <= new_range < range+output_size
 ```
 
-If we instead take `range` and `restrict` to be in the middle of their ranges, we get
+If we instead take `range` and `new_range` to be in the middle of their ranges, we get
 
 ```
-(4) E(p) = E(restrict/range)
-         = E(restrict)/E(range)
+(4) E(p) = E(new_range/range)
+         = E(new_range)/E(range)
          = (K-output_size)/(K+1)
 
        K = limit + limit/input_size
@@ -302,4 +302,4 @@ The following table summarises some of the entropy losses when performing conver
 |                  |           | 32                 | 7.6e-8           | 6.8e-7          |
 |                  |           | 64                 | 3.7e-17          | 3.5e-16         |
 
-Tests validate that the measured entropy loss does not exceed the maximum loss over a long run. In the case of 32- and 64-bit limits, we appear to systematically overestimate the entropy loss, because events where `value <  restrict` are rare (P=3.2e-19), and it is these events that consume the most entropy.
+Tests validate that the measured entropy loss does not exceed the maximum loss over a long run. In the case of 32- and 64-bit limits, we appear to systematically overestimate the entropy loss, because events where `value <  new_range` are rare (P=3.2e-19), and it is these events that consume the most entropy.
