@@ -271,21 +271,21 @@ The previous section gave a conservative estimate for entropy loss based on the 
     range <= restrict < range+output_size
 ```
 
-If we instead take `range` and `restrict` to be in the middle of their potential ranges, we get
+If we instead take `range` and `restrict` to be in the middle of their ranges, we get
 
 ```
-    E(p) = E(restrict/range)
+(4) E(p) = E(restrict/range)
          = E(restrict)/E(range)
          = (K-output_size)/(K+1)
 
        K = limit + limit/input_size
 ```
 
-We can then use Equation (3) to give us the expected entropy loss. Again we note that larger `limit`, smaller `input_size` and smaller `output_size` give lower entropy loss.
+We can then use Equation 3 to give us the expected entropy loss. Again we note that larger `limit`, smaller `input_size` and smaller `output_size` give lower entropy loss.
 
 ## Results
 
-The following table summarises some of the entropy losses when performing conversion, either per conversion, or per shuffle.
+The following table summarises some of the entropy losses when performing conversion, either per conversion, or per shuffle. Estimated loss is given by `p` from Equation 4, and maximum loss is given by using `p` from Equation 2.
 
 | Conversion to    | From base | Buffer size (bits) | Est. loss (bits) | Max loss (bits) |
 |------------------|----------:|-------------------:|-----------------:|----------------:|
@@ -302,4 +302,4 @@ The following table summarises some of the entropy losses when performing conver
 |                  |           | 32                 | 7.6e-8           | 6.8e-7          |
 |                  |           | 64                 | 3.7e-17          | 3.5e-16         |
 
-
+Tests validate that the measured entropy loss does not exceed the maximum loss over a long run. In the case of 32- and 64-bit limits, we appear to systematically overestimate the entropy loss, because events where `value <  restrict` are rare (P=3.2e-19), and it is these events that consume the most entropy.
