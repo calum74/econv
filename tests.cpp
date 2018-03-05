@@ -28,7 +28,7 @@ LD expected_entropy_loss(T out, T in = 2)
 	LD limit = std::numeric_limits<T>::max();
 	LD k = limit + limit/in;
 	LD p = (k-out)/(k+1);
-	LD q = 1-p;
+	LD q = (out+1)/(k+1); // = 1-p
 	return (-p * std::log2(p) - q * std::log2(q)) / p;
 }
 
