@@ -302,4 +302,4 @@ The following table summarises some of the entropy losses when performing conver
 |                  |           | 32                 | 7.6e-8           | 6.8e-7          |
 |                  |           | 64                 | 3.7e-17          | 3.5e-16         |
 
-Tests validate that the measured entropy loss does not exceed the maximum loss over a long run. In the case of 32- and 64-bit limits, we appear to systematically overestimate the entropy loss, because events where `value <  new_range` are rare (P=3.2e-19), and it is these events that consume the most entropy.
+Tests validate that the measured entropy loss does not exceed the maximum loss over a long run. In the case of 32- and 64-bit limits, we appear to systematically overestimate the entropy loss, because events where `value <  new_range` are rare (P~=1e-18), and it is these events that consume the most entropy.
