@@ -96,14 +96,14 @@ class entropy_converter<T, U>
 ```c++
 typedef T result_type;
 ```
-The datatype used to store non-binary entropy. The larger this data type, the more efficient the entropy conversion, but the entropy converter pre-fetches more entropy up to the size of `result_type`.
+The datatype used to convert output entropy. The larger this data type, the more efficient the entropy conversion, but the entropy converter pre-fetches more entropy up to the size of `result_type`.
 
 To ensure good efficiency, the size of `result_type` should be much larger than the output range, and *must* be at least twice as large as the maximum output range required.
 
 ```c++
 typedef U buffer_type;
 ```
-The datatype used to store binary entropy.  It must be large enough to hold the binary input, and defaults to `unsigned` which is the output of `std::random_device`.
+The datatype used to buffer binary entropy.  It must be large enough to hold an input value, and defaults to `unsigned` which is the output of `std::random_device`.
 
 ### Constructors
 
@@ -122,7 +122,7 @@ entropy_converter& operator=(const entropy_converter&) = delete;
 ```
 Moves the internal entropy buffer from another `entropy_converter`. The copy operator is deleted as it is almost certainly not intended, and entropy must never be copied.
 
-### convert method
+### `convert` method
 
 ```c++
 template<typename Generator>
@@ -135,11 +135,11 @@ template<typename Result, typename Input, typename Generator>
 Result convert(Result outMin, Result outMax, Input inMin, Input inMax, Generator & gen,
                result_type limit = std::numeric_limits<result_type>::max());
 ```
-This method reads uniform integers from `gen` and returns uniform integers in the specified range.
+Performs arbitrary entropy conversion. This method reads uniform integers from `gen` and returns a uniform integer in the specified range. 
 
-The output range is either between `0` and `target-1` or between `outMin` and `outMax` inclusive.
+The *output range* is between `0` and `target-1`, or between `outMin` and `outMax` inclusive. The input range is defined implicitly by `gen.min()` and `gen.max()`, or can be explicitly supplied as arguments `inMin` and `inMax`.
 
-`gen` is a functor that returns a uniform random value in the input range. It is compatible with C++ random number engines. The input range is defined implicitly by `gen.min()` and `gen.max()`, or can be explicitly supplied as arguments `inMin` and `inMax`.
+`gen` is a functor that returns a uniform random integer in the input range. It is compatible with C++ random number engines such as `std::random_device` or `std::mt19937`.
 
 `limit` controls the size of buffered entropy, but there is normally no need to specify this as it is generally desirable to buffer as much entropy as possible.
 
@@ -183,7 +183,7 @@ Returns a functor taking no arguments returning a uniform random number between 
 
 Producing uniform random numbers from a hardware source presents two challenges:
 
-1) Ensuring that the resulting number is perfectly uniform
+1) Ensuring that the resulting number is perfectly uniform,
 2) Avoiding losing too much entropy in the conversion process.
 
 The simple solution, `rand()%n`, is wrong because the resulting distribution will always be biased, except when n is itself a power of 2. In fact any algorithm using a finite quantity of binary entropy produces a biased distribution, and the only correct solution is to allow for an unbounded amount of input entropy.
@@ -258,17 +258,17 @@ The expected number of times we go round the loop is `1/p`, so the expected entr
 (3)  (-plg(p) - qlg(q))/p
 ```
 
-We now see the purpose of fetching as much entropy as possible up front. In order to achieve efficient conversion, we make `q` as small as possible, which is done by making `limit` as large as possible (e.g. 2^64-1), and `input_size` as small as possible, i.e. 2. When converting from a binary source producing (say) chunks of 32-bits, that is split so that the input size is 2 and not 2^32.
+We now see the purpose of fetching as much entropy as possible up front. In order to achieve efficient conversion, we make `q` as small as possible, which is done by making `limit` as large as possible (e.g. 2^64-1), and `input_size` as small as possible, i.e. 2. Note that chunks of binary entropy are buffered and read 1 bit at a time, so the `input_size` is taken to be 2.
 
-`limit` is determined by the size of `result_type`, therefore `entropy_converter<uint64_t>` is more efficient than `entropy_converter<uint32_t>`, at the expense of slightly more buffering.
+`limit` is the largest value represented by `result_type`. Therefore `entropy_converter<uint64_t>` is more efficient than `entropy_converter<uint32_t>`, at the expense of slightly more buffering.
 
 ## A better estimate of entropy loss
 
-The previous section gave a conservative estimate for entropy loss based on the range of possible values for `range` and `restrict`.
+The previous section gave a conservative estimate for entropy loss based on the range of possible values for `range` and `new_range`.
 
 ```
     limit/input_size < range <= limit
-    range <= new_range < range+output_size
+    range-output_size < new_range <= range
 ```
 
 If we instead take `range` and `new_range` to be in the middle of their ranges, we get
