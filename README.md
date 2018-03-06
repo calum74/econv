@@ -8,7 +8,7 @@ The algorithm converts entropy very efficiently, which means that very little en
 For example, shuffling a deck of 52 cards using `std::shuffle` reads 1632 bits of entropy, losing 1406 bits of entropy each time. _econv_ loses around 8.6e-15 bits. Similarly, `std::uniform_int_distribution` reads at least 32 bits of entropy to produce a single die throw, losing over 29 bits, whereas *econv* would lose on average just 3.9e-17 bits.
 
 ## Setup
-The entire library consists of a single header file, [entropy_converter.hpp](entropy_converter.hpp), that can simply by copied to the desired location.
+The library consists of a single header file, [entropy_converter.hpp](entropy_converter.hpp), that can be copied to the desired location.
 
 The test suite and demo, [tests.cpp](tests.cpp), can be compiled using `g++ tests.cpp --std=c++14` with GCC, or `cl tests.cpp` with Microsoft C++.
 
