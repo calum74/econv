@@ -141,7 +141,7 @@ void measure_conversion(T from, T to)
 
 	inputEntropy -= buffered_entropy(c2);
 	auto loss = (inputEntropy - outputEntropy) / n;
-	if (loss < 0) loss = std::nan(nullptr);
+	if (loss < 0) loss = NAN;
 
 	std::cout << std::setprecision(6);
 	std::cout << "| Convert " << from << " to " << to << " | " << sizeof(T) * 8 << " | " << 
@@ -173,7 +173,7 @@ void measure_expected_entropy()
 
 	auto inputEntropy = d.entropy() - buffered_entropy(c);
 	auto totalLoss = inputEntropy - outputEntropy;
-	if (totalLoss < 0) totalLoss = std::nan(nullptr);
+	if (totalLoss < 0) totalLoss = NAN;
 	std::cout << std::setprecision(6);
 	std::cout << "| Randomized sequence | " << sizeof(T) * 8 << " | " << expectedLoss << " | " << maxLoss << " | " << n <<
 		" | " << totalLoss << " | " << std::setprecision(15) << inputEntropy << " | " << outputEntropy << " |\n";
