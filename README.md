@@ -271,12 +271,12 @@ The previous section gave a conservative estimate for entropy loss based on the 
     range-output_size < new_range <= range
 ```
 
-If we instead take `range` and `new_range` to be in the middle of their ranges, we get
+If we instead take `range` and `new_range` to be in the middle of their ranges, which seems a bit sketchy, we get
 
 ```
 (4) E(p) = E(new_range/range)
          = E(new_range)/E(range)
-         = (K-output_size)/(K+1)
+         = (K+2-output_size)/(K+1)
 
        K = limit + limit/input_size
 ```
@@ -287,19 +287,21 @@ We can then use Equation 3 to give us the expected entropy loss. Again we note t
 
 The following table summarises some of the entropy losses when performing conversion, either per conversion, or per shuffle. Estimated loss is given by `p` from Equation 4, and maximum loss is given by using `p` from Equation 2.
 
-| Conversion to    | From base | Buffer size (bits) | Est. loss (bits) | Max loss (bits) |
-|------------------|----------:|-------------------:|-----------------:|----------------:|
-| Roll a 1-6       | 2         | 16                 | 0.0011           | 0.0025          |
-|                  |           | 32                 | 3.4e-8           | 8.3e-8          |
-|                  |           | 64                 | 1.7e-17          | 4.0e-17         | 
-| Shuffle 52 cards | 2         | 16                 | 0.19             | 0.48            |
-|                  |           | 32                 | 6.4e-6           | 1.8e-5          |
-|                  |           | 64                 | 3.3e-15          | 8.87e-15        |
-| 1-9              | 10        | 16                 | 0.0020           | 0.015           |
-|                  |           | 32                 | 6.4e-8           | 5.6e-7          |
-|                  |           | 64                 | 2.4e-17          | 2.9e-16         |
-| 1-11             | 10        | 16                 | 0.0023           | 0.018           |
-|                  |           | 32                 | 7.6e-8           | 6.8e-7          |
-|                  |           | 64                 | 3.7e-17          | 3.5e-16         |
+| Test | Buffer size (bits) | Estimated loss (bits) | Max loss (bits) | 
+|------|-------------------:|----------------------:|----------------:|
+| Shuffle 52 | 16 | 0.176249 | 0.48146 |
+| Shuffle 52 | 32 | 5.98162e-06 | 1.75987e-05 | 
+| Shuffle 52 | 64 | 2.85706e-15 | 8.65955e-15 | 
+| Convert 2 to 6 | 16 | 0.000798877 | 0.0025379 |
+| Convert 2 to 6 | 32 | 2.46069e-08 | 8.34215e-08 |
+| Convert 2 to 6 | 64 | 1.1251e-17 | 3.93013e-17 |
+| Convert 10 to 9 | 16 | 0.00161818 | 0.0150582 |
+| Convert 10 to 9 | 32 | 5.17819e-08 | 5.64748e-07 | 
+| Convert 10 to 9 | 64 | 2.41038e-17 | 2.80577e-16 | 
+| Convert 10 to 11 | 16 | 0.00197812 | 0.017923 | 
+| Convert 10 to 11 | 32 | 6.40459e-08 | 6.82833e-07 | 
+| Convert 10 to 11 | 64 | 2.99711e-17 | 3.41201e-16 | 
 
-Tests validate that the measured entropy loss does not exceed the maximum loss over a long run. In the case of 32- and 64-bit limits, we appear to systematically overestimate the entropy loss, because events where `value <  new_range` are rare (P~=1e-18), and it is these events that consume the most entropy.
+Tests validate that the measured entropy loss does not exceed the maximum loss over a long run. In the case of 32- and 64-bit limits, we appear to systematically overestimate the entropy loss, because most of the entropy lost would occur whenever `value <  new_range` fails. These events are very rare (P~=1e-18) so don't show up in the tests.
+
+The entropy loss in Equation 1 shows two components: the entropy lost whenever `value <  new_range` is true, and the entropy lost whenever `value <  new_range` is false. It turns out that the second term `qlg(q)`dominates this equation, in the sense that `((1-q)lg(1-q))/(qlg(q)) -> 0` as `q -> 0`.
