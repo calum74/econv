@@ -27,8 +27,8 @@ LD expected_entropy_loss(T out, T in = 2)
 {
 	LD limit = std::numeric_limits<T>::max();
 	LD k = limit + limit/in;
-	LD p = (k-out)/(k+1);
-	LD q = (out+1)/(k+1); // = 1-p
+	LD p = (k+2-out)/(k+1);
+	LD q = (out-1)/(k+1); // = 1-p
 	return (-p * std::log2(p) - q * std::log2(q)) / p;
 }
 
@@ -94,12 +94,10 @@ private:
 template<typename T>
 void measure_shuffle()
 {
-	int n = 1000;
+	int n = 10000;
 	int deck = 52;
 	entropy_converter<T> g;
 	MeasuringRandomDevice d;
-	std::cout << "\nMeasuring " << n << " shuffles of a deck of size " <<
-		deck << " using " << sizeof(T)*8 << " bits:\n";
 
 	// Measure actual entropy used generating n shuffles
 	LD outputEntropy = 0.0;
@@ -107,7 +105,7 @@ void measure_shuffle()
 	LD expectedEntropyLoss = 0.0;
 	for (int i = 0; i < n; ++i)
 	{
-		for (T t = 2; t <= 52; ++t)
+		for (T t = 2; t <= deck; ++t)
 		{
 			g.convert(t, d);
 			outputEntropy += std::log2(LD(t));
@@ -118,13 +116,10 @@ void measure_shuffle()
 
 	LD inputEntropy = d.entropy() - buffered_entropy(g);
 
-	std::cout << std::setprecision(20);
-	std::cout << "  Input entropy  = " << inputEntropy << " bits\n";
-	std::cout << "  Output entropy = " << outputEntropy << " bits\n";
 	std::cout << std::setprecision(6);
-	std::cout << "  Measured entropy loss per shuffle = " << (inputEntropy - outputEntropy) / n << " bits\n";
-	std::cout << "  Est. entropy loss per shuffle = " << expectedEntropyLoss / n << " bits\n";
-	std::cout << "  Upper bound entropy loss per shuffle = " << maxEntropyLoss / n << " bits\n";
+	std::cout << "| Shuffle " << deck << " | " << sizeof(T) * 8 << " | " << expectedEntropyLoss / n << " | "
+		<< maxEntropyLoss / n << " | " << n << " | " << (inputEntropy - outputEntropy)/n << 
+		" | " << std::setprecision(15) << inputEntropy << " | " << std::setprecision(15) << outputEntropy << " |\n";
 }
 
 // Measure actual entropy used to convert numbers from one base to another.
@@ -145,15 +140,14 @@ void measure_conversion(T from, T to)
 	}
 
 	inputEntropy -= buffered_entropy(c2);
+	auto loss = (inputEntropy - outputEntropy) / n;
+	if (loss < 0) loss = std::nan(nullptr);
 
-	std::cout << "\nMeasuring " << n << " conversions from " << from << " to " << to << " using " << sizeof(T)*8 << " bits:\n";
-	std::cout << std::setprecision(12);
-	std::cout << "  Input entropy  = " << inputEntropy << " bits\n";
-	std::cout << "  Output entropy = " << outputEntropy << " bits\n";
 	std::cout << std::setprecision(6);
-	std::cout << "  Measured entropy loss per conversion = " << (inputEntropy - outputEntropy) / n << " bits\n";
-	std::cout << "  Estimated entropy loss per conversion = " << expected_entropy_loss(to, from) << " bits\n";
-	std::cout << "  Upper bound entropy loss per conversion = " << max_entropy_loss(to, from) << " bits\n";
+	std::cout << "| Convert " << from << " to " << to << " | " << sizeof(T) * 8 << " | " << 
+		expected_entropy_loss(to, from) << " | " << max_entropy_loss(to, from) << " | " <<
+		n << " | " <<
+		loss << " | " << std::setprecision(15) << inputEntropy << " | " << outputEntropy << " |\n";
 }
 
 // Measure how much entropy is lost in a random sequence of conversions.
@@ -162,7 +156,7 @@ void measure_expected_entropy()
 {
 	MeasuringRandomDevice d;
 	entropy_converter<T> c;
-	int n = 1000;
+	int n = 10000;
 	T t = 50, max = 1000, min = 5;
 	long double expectedLoss = 0, maxLoss = 0;
 	long double outputEntropy = 0;
@@ -178,13 +172,11 @@ void measure_expected_entropy()
 	}
 
 	auto inputEntropy = d.entropy() - buffered_entropy(c);
-	std::cout << std::setprecision(40) << std::fixed;
-	std::cout << "\nMeasuring randomized entropy loss using " << sizeof(T) * 8 << " bits:\n";
-	std::cout << "  Input entropy         = " << inputEntropy << " bits\n";
-	std::cout << "  Output entropy        = " << outputEntropy << " bits\n";
-	std::cout << "  Measured entropy loss = " << (inputEntropy - outputEntropy) << " bits\n";
-	std::cout << "  Expected entropy loss = " << expectedLoss << " bits\n";
-	std::cout << "  Upper bound loss      = " << maxLoss << " bits\n";
+	auto totalLoss = inputEntropy - outputEntropy;
+	if (totalLoss < 0) totalLoss = std::nan(nullptr);
+	std::cout << std::setprecision(6);
+	std::cout << "| Randomized sequence | " << sizeof(T) * 8 << " | " << expectedLoss << " | " << maxLoss << " | " << n <<
+		" | " << totalLoss << " | " << std::setprecision(15) << inputEntropy << " | " << outputEntropy << " |\n";
 }
 
 void examples()
@@ -356,15 +348,12 @@ void measurements()
 		int n = 1000;
 		for (int i = 0; i < n; ++i)
 			d6(d);
-		std::cout << "Entropy used by std::uniform_int_distribution(1,6) = " << d.entropy() / n << " bits\n";
+		std::cout << "Entropy used by std::uniform_int_distribution(1,6) = " << d.entropy() / n << " bits\n\n";
 	}
 #endif
 
-	std::cout << "Upper bound entropy loss of generating a 1-6, 64-bit buffer = " << max_entropy_loss(uint64_t(6)) << " bits\n";
-	std::cout << "Upper bound entropy loss of shuffling 52 cards, 64-bit buffer = " << max_shuffle_loss(uint64_t(52)) << " bits\n";
-	std::cout << "Upper bound entropy loss of generating a 1-6, 32-bit buffer = " << max_entropy_loss(uint32_t(6)) << " bits\n";
-	std::cout << "Upper bound entropy loss of shuffling 52 cards, 32-bit buffer = " << max_shuffle_loss(uint32_t(52)) << " bits\n";
-
+	std::cout << "| Test | Buffer size (bits) | Estimated loss (bits) | Max loss (bits) | Iterations | Measured loss (bits) | Input entropy (bits) | Output entropy (bits) |\n";
+	std::cout << "|------|-------------------:|----------------------:|----------------:|-----------:|---------------------:|---------------------:|----------------------:|\n";
 	measure_shuffle<std::uint16_t>();
 	measure_shuffle<std::uint32_t>();
 	measure_shuffle<std::uint64_t>();
