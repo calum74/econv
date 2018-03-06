@@ -304,4 +304,4 @@ The following table summarises some of the entropy losses when performing conver
 
 Tests validate that the measured entropy loss does not exceed the maximum loss over a long run. In the case of 32- and 64-bit limits, we appear to systematically overestimate the entropy loss, because most of the entropy lost would occur whenever `value <  new_range` fails. These events are very rare (P~=1e-18) so don't show up in the tests.
 
-The entropy loss in Equation 1 shows two components: the entropy lost whenever `value <  new_range` is true, and the entropy lost whenever `value <  new_range` is false. It turns out that the second term `qlg(q)`dominates this equation, in the sense that `((1-q)lg(1-q))/(qlg(q)) -> 0` as `q -> 0`.
+The entropy loss in Equation 1 shows two components: the entropy lost whenever `value <  new_range` is true (`-plg(p)`), and the entropy lost whenever `value <  new_range` is false (`-qlg(q)`). It turns out that the second term `qlg(q)`dominates this equation, in the sense that `(plg(p))/(qlg(q)) -> 0` as `q -> 0`.
