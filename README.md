@@ -5,7 +5,7 @@ _econv_ is an easy to use C++ library to generate perfect random numbers, and pe
 
 The algorithm converts entropy very efficiently, which means that very little entropy is lost in the conversion process. This is interesting from an algorithmic perspective, and practical in case that hardware entropy is a limited resource.
 
-For example, shuffling a deck of 52 cards using `std::shuffle` reads 1632 bits of entropy, losing 1406 bits of entropy each time. _econv_ loses around 8.6e-15 bits. Similarly, `std::uniform_int_distribution` reads at least 32 bits of entropy to produce a single die throw, losing over 29 bits, whereas *econv* would lose on average just 3.9e-17 bits.
+For example, shuffling a deck of 52 cards using `std::shuffle` reads 1632 bits of entropy, losing 1406 bits of entropy each time. _econv_ loses around 8.6e-15 bits. Similarly, `std::uniform_int_distribution` reads at least 32 bits of entropy to produce a single 1-6 die throw, losing over 29 bits, whereas _econv_ would lose on average just 3.9e-17 bits.
 
 ## Setup
 The library consists of a single header file, [entropy_converter.hpp](entropy_converter.hpp), that can be copied to the desired location.
