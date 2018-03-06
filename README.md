@@ -135,7 +135,7 @@ template<typename Result, typename Input, typename Generator>
 Result convert(Result outMin, Result outMax, Input inMin, Input inMax, Generator & gen,
                result_type limit = std::numeric_limits<result_type>::max());
 ```
-Performs arbitrary entropy conversion. This method reads uniform integers from `gen` and returns a uniform integer in the specified range. 
+Performs entropy conversion from one uniform range to another. This method reads uniform integers from `gen` and returns a uniform integer in the specified range. 
 
 The *output range* is between `0` and `target-1`, or between `outMin` and `outMax` inclusive. The input range is defined implicitly by `gen.min()` and `gen.max()`, or can be explicitly supplied as arguments `inMin` and `inMax`.
 
@@ -181,9 +181,9 @@ Returns a functor taking no arguments returning a uniform random number between 
 
 ## Theoretical background
 
-Producing uniform random numbers from a hardware source presents two challenges:
+Producing uniform random integers from a hardware source presents two challenges:
 
-1) Ensuring that the resulting number is perfectly uniform,
+1) Ensuring that the resulting numbers are perfectly uniform,
 2) Avoiding losing too much entropy in the conversion process.
 
 The simple solution, `rand()%n`, is wrong because the resulting distribution will always be biased, except when n is itself a power of 2. In fact any algorithm using a finite quantity of binary entropy produces a biased distribution, and the only correct solution is to allow for an unbounded amount of input entropy.
