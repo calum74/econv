@@ -12,7 +12,7 @@ The library consists of a single header file, [entropy_converter.hpp](entropy_co
 
 The test suite and demo, [tests.cpp](tests.cpp), can be compiled using `g++ tests.cpp --std=c++14` with GCC, or `cl tests.cpp` with Microsoft C++.
 
-Compatibility: C++14. Tested with Visual Studio 2017, clang 9.0 and g++ 5.4.
+Compatibility: C++14. Tested with Visual Studio 2017, Apple LLVM 9.0 and g++ 5.4.
 
 ## Quick guide
 
